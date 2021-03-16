@@ -22,15 +22,15 @@ def get_args():
     parser.add_argument("--img_dir", default='/home/work/Datasets/ImageNet-C/blur', help="Images dir path")
 
     parser.add_argument('--resume_edge',
-                        default='checkpoints/shape/shape_weight_1_pretrain_true_notConsistent/model_best.pth.tar',
+                        default='checkpoints/shape/weight_1_pretrain_sgd/model_best.pth.tar',
                         type=str,
                         help='path to edge model checkpoint (default: none)')
     parser.add_argument('--resume_color',
-                        default='checkpoints/color/color_weight_1_pretrain_true_consistent/model_best.pth.tar',
+                        default='checkpoints/color/weight_1_pretrain_sgd/model_best.pth.tar',
                         type=str,
                         help='path to color model checkpoint (default: none)')
     parser.add_argument('--resume_ensemble',
-                        default='checkpoints/ensemble/checkpoint_1_acc_0.746.pth.tar',
+                        default='checkpoints/ensemble/sgd/model_best.pth.tar',
                         type=str,
                         help='path to color model checkpoint (default: none)')
 

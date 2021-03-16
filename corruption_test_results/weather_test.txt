@@ -78,3 +78,31 @@ Dataset: brightness_3, accuracy: 0.5791999697685242
 Dataset: brightness_4, accuracy: 0.5175999999046326
 Dataset: brightness_5, accuracy: 0.45239999890327454
 Mean corruption: brightness, accuracy: 0.5636399984359741, error: 0.4363600015640259
+
+checkpoints/ensemble/sgd/model_best.pth.tar
+
+Dataset: frost_1, accuracy: 0.6692999601364136
+Dataset: frost_2, accuracy: 0.49149999022483826
+Dataset: frost_3, accuracy: 0.3682999908924103
+Dataset: frost_4, accuracy: 0.3434999883174896
+Dataset: frost_5, accuracy: 0.27730000019073486
+Mean corruption: frost, accuracy: 0.42998000979423523, error: 0.5700199604034424
+Dataset: snow_1, accuracy: 0.6031000018119812
+Dataset: snow_2, accuracy: 0.3775999844074249
+Dataset: snow_3, accuracy: 0.42319998145103455
+Dataset: snow_4, accuracy: 0.3091999888420105
+Dataset: snow_5, accuracy: 0.24560000002384186
+Mean corruption: snow, accuracy: 0.39173999428749084, error: 0.6082600355148315
+Dataset: fog_1, accuracy: 0.6869999766349792
+Dataset: fog_2, accuracy: 0.6352999806404114
+Dataset: fog_3, accuracy: 0.5661999583244324
+Dataset: fog_4, accuracy: 0.5123999714851379
+Dataset: fog_5, accuracy: 0.35269999504089355
+Mean corruption: fog, accuracy: 0.5507199764251709, error: 0.4492800235748291
+Dataset: brightness_1, accuracy: 0.7914999723434448
+Dataset: brightness_2, accuracy: 0.7746999859809875
+Dataset: brightness_3, accuracy: 0.7529000043869019
+Dataset: brightness_4, accuracy: 0.7127000093460083
+Dataset: brightness_5, accuracy: 0.6626999974250793
+Mean corruption: brightness, accuracy: 0.7388999462127686, error: 0.26110005378723145
+

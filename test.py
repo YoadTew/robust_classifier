@@ -18,9 +18,9 @@ def get_args():
     parser.add_argument('--pretrained', action='store_true', help='Load pretrain model')
     parser.add_argument("--n_workers", type=int, default=4, help="Number of workers for dataloader")
 
-    parser.add_argument("--img_dir", default='/home/work/Datasets/ImageNet-C/weather', help="Images dir path")
+    parser.add_argument("--img_dir", default='/home/work/Datasets/ImageNet-C/blur', help="Images dir path")
 
-    parser.add_argument('--resume', default='checkpoints/color/weight_1_pretrain_sgd/model_best.pth.tar', type=str,
+    parser.add_argument('--resume', default='checkpoints/clean_training/model_best.pth.tar', type=str,
                         help='path to latest checkpoint (default: none)')
 
     return parser.parse_args()
