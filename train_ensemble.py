@@ -34,7 +34,7 @@ def get_args():
     parser.add_argument('--resume_ensemble', default='', type=str,
                         help='path to color model checkpoint (default: none)')
 
-    parser.add_argument("--checkpoint", default='checkpoints', help="Logs dir path")
+    parser.add_argument("--checkpoint", default='checkpoints/ensemble', help="Logs dir path")
     parser.add_argument("--log_dir", default='logs/ensemble', help="Logs dir path")
     parser.add_argument("--log_prefix", default='', help="Logs dir path")
 

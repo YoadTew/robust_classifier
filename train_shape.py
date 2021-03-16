@@ -12,7 +12,8 @@ import sys
 import json
 
 from models.resnet import resnet18
-from data.shape.data_manager import get_val_loader, get_train_loader
+from data.data_manager import get_val_loader, get_train_loader
+from data.shape.imagenetDataset import imagenetDataset
 
 def get_args():
     parser = argparse.ArgumentParser(description="training script",
@@ -30,8 +31,8 @@ def get_args():
 
     parser.add_argument('--resume', default='', type=str,
                         help='path to latest checkpoint (default: none)')
-    parser.add_argument("--checkpoint", default='checkpoints', help="Logs dir path")
-    parser.add_argument("--log_dir", default='logs', help="Logs dir path")
+    parser.add_argument("--checkpoint", default='checkpoints/shape', help="Logs dir path")
+    parser.add_argument("--log_dir", default='logs/shape', help="Logs dir path")
     parser.add_argument("--log_prefix", default='', help="Logs dir path")
 
     return parser.parse_args()
@@ -61,8 +62,8 @@ class Trainer:
         model = resnet18(pretrained=args.pretrained, num_classes=200)
         self.model = model.to(device)
 
-        self.train_loader = get_train_loader(args)
-        self.val_loader = get_val_loader(args)
+        self.train_loader = get_train_loader(args, imagenetDataset)
+        self.val_loader = get_val_loader(args, imagenetDataset)
 
         # self.optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, momentum=0.9)
         self.optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate)
