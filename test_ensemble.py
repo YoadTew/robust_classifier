@@ -8,6 +8,7 @@ import os
 import sys
 
 from models.resnet import resnet18
+from models.ensemble_network import EnsembleNet
 from data.data_manager import get_test_loaders
 
 def get_args():
@@ -18,10 +19,20 @@ def get_args():
     parser.add_argument('--pretrained', action='store_true', help='Load pretrain model')
     parser.add_argument("--n_workers", type=int, default=4, help="Number of workers for dataloader")
 
-    parser.add_argument("--img_dir", default='/home/work/Datasets/ImageNet-C/weather', help="Images dir path")
+    parser.add_argument("--img_dir", default='/home/work/Datasets/ImageNet-C/blur', help="Images dir path")
 
-    parser.add_argument('--resume', default='checkpoints/color/weight_1_pretrain_sgd/model_best.pth.tar', type=str,
-                        help='path to latest checkpoint (default: none)')
+    parser.add_argument('--resume_edge',
+                        default='checkpoints/shape/shape_weight_1_pretrain_true_notConsistent/model_best.pth.tar',
+                        type=str,
+                        help='path to edge model checkpoint (default: none)')
+    parser.add_argument('--resume_color',
+                        default='checkpoints/color/color_weight_1_pretrain_true_consistent/model_best.pth.tar',
+                        type=str,
+                        help='path to color model checkpoint (default: none)')
+    parser.add_argument('--resume_ensemble',
+                        default='checkpoints/ensemble/checkpoint_1_acc_0.746.pth.tar',
+                        type=str,
+                        help='path to color model checkpoint (default: none)')
 
     return parser.parse_args()
 
@@ -30,18 +41,27 @@ class Tester:
         self.args = args
         self.device = device
 
-        model = resnet18(pretrained=args.pretrained, num_classes=200)
-        self.model = model.to(device)
+        # Loads shape model
+        edge_model = resnet18(pretrained=args.pretrained, num_classes=200).to(device)
+        edge_checkpoint = torch.load(args.resume_edge)
+        edge_model.load_state_dict(edge_checkpoint['state_dict'])
 
-        if args.resume and os.path.isfile(args.resume):
-            print(f'Loading checkpoint {args.resume}')
+        # Loads color model
+        color_model = resnet18(pretrained=args.pretrained, num_classes=200).to(device)
+        color_checkpoint = torch.load(args.resume_color)
+        color_model.load_state_dict(color_checkpoint['state_dict'])
 
-            checkpoint = torch.load(args.resume)
+        self.ensemble_model = EnsembleNet(edge_model, color_model, n_classes=200).to(device)
+
+        if args.resume_ensemble and os.path.isfile(args.resume_ensemble):
+            print(f'Loading checkpoint {args.resume_ensemble}')
+
+            checkpoint = torch.load(args.resume_ensemble)
             self.start_epoch = checkpoint['epoch']
             self.best_acc = checkpoint['best_prec1']
-            self.model.load_state_dict(checkpoint['state_dict'])
+            self.ensemble_model.load_state_dict(checkpoint['state_dict'])
 
-            print(f'Loaded checkpoint {args.resume}, starting from epoch {self.start_epoch}')
+            print(f'Loaded checkpoint {args.resume_ensemble}, starting from epoch {self.start_epoch}')
 
         cudnn.benchmark = True
 
@@ -62,7 +82,7 @@ class Tester:
         # accuracy = do_test(self.test_loader)
 
     def do_test(self, loader):
-        self.model.eval()
+        self.ensemble_model.eval()
         with torch.no_grad():
             total = len(loader.dataset)
 
@@ -72,7 +92,7 @@ class Tester:
                 inputs, targets = inputs.to(self.device), targets.to(self.device)
 
                 # forward
-                outputs, _ = self.model(inputs)
+                outputs = self.ensemble_model(inputs)
 
                 _, cls_pred = outputs.max(dim=1)
 

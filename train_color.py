@@ -31,13 +31,16 @@ def get_args():
 
     parser.add_argument('--resume', default='', type=str,
                         help='path to latest checkpoint (default: none)')
-    parser.add_argument("--checkpoint", default='checkpoints/color', help="Logs dir path")
-    parser.add_argument("--log_dir", default='logs/color', help="Logs dir path")
+    parser.add_argument("--checkpoint", default='checkpoints/color/weight_1_pretrain_sgd', help="Logs dir path")
+    parser.add_argument("--log_dir", default='logs/color/weight_1_pretrain_sgd', help="Logs dir path")
     parser.add_argument("--log_prefix", default='', help="Logs dir path")
 
     return parser.parse_args()
 
 def save_checkpoint(state, is_best, checkpoint='checkpoint', filename='checkpoint.pth.tar'):
+    if not os.path.exists(checkpoint):
+        os.makedirs(checkpoint)
+
     filepath = os.path.join(checkpoint, filename)
     torch.save(state, filepath)
     if is_best:
@@ -65,8 +68,8 @@ class Trainer:
         self.train_loader = get_train_loader(args, imagenetDataset)
         self.val_loader = get_val_loader(args, imagenetDataset)
 
-        # self.optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, momentum=0.9)
-        self.optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate)
+        self.optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, momentum=0.9)
+        # self.optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate)
         self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=int(args.epochs * .3))
         # self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=self.args.epochs)
 

@@ -24,20 +24,23 @@ def get_args():
 
     parser.add_argument("--learning_rate", "-l", type=float, default=.001, help="Learning rate")
     parser.add_argument("--epochs", "-e", type=int, default=30, help="Number of epochs")
-    parser.add_argument("--shape_loss_weight", type=float, default=1., help="Shape loss weight")
+    parser.add_argument("--shape_loss_weight", type=float, default=10., help="Shape loss weight")
     parser.add_argument("--n_workers", type=int, default=4, help="Number of workers for dataloader")
 
     parser.add_argument("--img_dir", default='/home/work/Datasets/Tiny-ImageNet-original', help="Images dir path")
 
     parser.add_argument('--resume', default='', type=str,
                         help='path to latest checkpoint (default: none)')
-    parser.add_argument("--checkpoint", default='checkpoints/shape', help="Logs dir path")
-    parser.add_argument("--log_dir", default='logs/shape', help="Logs dir path")
+    parser.add_argument("--checkpoint", default='checkpoints/shape/weight_10_pretrain_sgd', help="Logs dir path")
+    parser.add_argument("--log_dir", default='logs/shape/weight_10_pretrain_sgd', help="Logs dir path")
     parser.add_argument("--log_prefix", default='', help="Logs dir path")
 
     return parser.parse_args()
 
 def save_checkpoint(state, is_best, checkpoint='checkpoint', filename='checkpoint.pth.tar'):
+    if not os.path.exists(checkpoint):
+        os.makedirs(checkpoint)
+
     filepath = os.path.join(checkpoint, filename)
     torch.save(state, filepath)
     if is_best:
@@ -65,8 +68,8 @@ class Trainer:
         self.train_loader = get_train_loader(args, imagenetDataset)
         self.val_loader = get_val_loader(args, imagenetDataset)
 
-        # self.optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, momentum=0.9)
-        self.optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate)
+        self.optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, momentum=0.9)
+        # self.optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate)
         self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=int(args.epochs * .3))
         # self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=self.args.epochs)
 

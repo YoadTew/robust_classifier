@@ -36,11 +36,20 @@ class EnsembleNet(nn.Module):
     def forward(self, x):
         _, features_edge = self.edge_model(x)
         _, features_color = self.color_model(x)
-        weights = self.weights_net(x).view(-1, 1, 1)
+        weights = self.weights_net(x)
+        weights = weights.unsqueeze(-1)
 
-        weighted_features = weights * torch.stack([features_edge, features_color])
+        weighted_features = weights * torch.stack([features_edge, features_color], dim=1)
         weighted_features = weighted_features.view(features_edge.size(0), -1)
 
         logits = self.project(weighted_features)
 
         return logits
+
+    def get_trainable_params(self):
+        for param in self.edge_model.parameters():
+            param.requires_grad = False
+        for param in self.color_model.parameters():
+            param.requires_grad = False
+
+        return filter(lambda p: p.requires_grad, self.parameters())
