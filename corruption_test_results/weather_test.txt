@@ -1,0 +1,91 @@
+shape_weight_1_pretrain_true/checkpoint_15_acc_0.678.pth.tar
+
+Dataset: frost_1, accuracy: 0.423799991607666
+Dataset: frost_2, accuracy: 0.2572999894618988
+Dataset: frost_3, accuracy: 0.1671999990940094
+Dataset: frost_4, accuracy: 0.15600000321865082
+Dataset: frost_5, accuracy: 0.11469999700784683
+Dataset: snow_1, accuracy: 0.3562999963760376
+Dataset: snow_2, accuracy: 0.20829999446868896
+Dataset: snow_3, accuracy: 0.24219998717308044
+Dataset: snow_4, accuracy: 0.1727999895811081
+Dataset: snow_5, accuracy: 0.13619999587535858
+Dataset: fog_1, accuracy: 0.38019999861717224
+Dataset: fog_2, accuracy: 0.314300000667572
+Dataset: fog_3, accuracy: 0.24089999496936798
+Dataset: fog_4, accuracy: 0.22259999811649323
+Dataset: fog_5, accuracy: 0.13859999179840088
+Dataset: brightness_1, accuracy: 0.5812000036239624
+Dataset: brightness_2, accuracy: 0.5414999723434448
+Dataset: brightness_3, accuracy: 0.49049997329711914
+Dataset: brightness_4, accuracy: 0.42489999532699585
+Dataset: brightness_5, accuracy: 0.35349997878074646
+
+shape_weight_0_pretrain_true/model_best.pth.tar
+
+Dataset: frost_1, accuracy: 0.38819998502731323
+Dataset: frost_2, accuracy: 0.24219998717308044
+Dataset: frost_3, accuracy: 0.1631999909877777
+Dataset: frost_4, accuracy: 0.15410000085830688
+Dataset: frost_5, accuracy: 0.11699999868869781
+Dataset: snow_1, accuracy: 0.3621000051498413
+Dataset: snow_2, accuracy: 0.21930000185966492
+Dataset: snow_3, accuracy: 0.23879998922348022
+Dataset: snow_4, accuracy: 0.17069999873638153
+Dataset: snow_5, accuracy: 0.12960000336170197
+Dataset: fog_1, accuracy: 0.3726999759674072
+Dataset: fog_2, accuracy: 0.3156999945640564
+Dataset: fog_3, accuracy: 0.25029999017715454
+Dataset: fog_4, accuracy: 0.23009999096393585
+Dataset: fog_5, accuracy: 0.15320000052452087
+Dataset: brightness_1, accuracy: 0.5300999879837036
+Dataset: brightness_2, accuracy: 0.4837999939918518
+Dataset: brightness_3, accuracy: 0.43059998750686646
+Dataset: brightness_4, accuracy: 0.3546999990940094
+Dataset: brightness_5, accuracy: 0.2833999991416931
+
+shape_weight_10_pretrain_true/model_best.pth.tar
+
+Dataset: frost_1, accuracy: 0.4187999963760376
+Dataset: frost_2, accuracy: 0.24039998650550842
+Dataset: frost_3, accuracy: 0.15359999239444733
+Dataset: frost_4, accuracy: 0.13899999856948853
+Dataset: frost_5, accuracy: 0.10009999573230743
+Dataset: snow_1, accuracy: 0.3375999927520752
+Dataset: snow_2, accuracy: 0.1891999989748001
+Dataset: snow_3, accuracy: 0.23349998891353607
+Dataset: snow_4, accuracy: 0.16939999163150787
+Dataset: snow_5, accuracy: 0.13239999115467072
+Dataset: fog_1, accuracy: 0.3537999987602234
+Dataset: fog_2, accuracy: 0.28049999475479126
+Dataset: fog_3, accuracy: 0.21149998903274536
+Dataset: fog_4, accuracy: 0.18369999527931213
+Dataset: fog_5, accuracy: 0.10610000044107437
+Dataset: brightness_1, accuracy: 0.5812000036239624
+Dataset: brightness_2, accuracy: 0.5485000014305115
+Dataset: brightness_3, accuracy: 0.5113999843597412
+Dataset: brightness_4, accuracy: 0.4578000009059906
+Dataset: brightness_5, accuracy: 0.3856000006198883
+
+color_weight_1_pretrain_true_consistent/model_best.pth.tar
+
+Dataset: frost_1, accuracy: 0.34119999408721924
+Dataset: frost_2, accuracy: 0.24539999663829803
+Dataset: frost_3, accuracy: 0.18199999630451202
+Dataset: frost_4, accuracy: 0.17880000174045563
+Dataset: frost_5, accuracy: 0.14489999413490295
+Dataset: snow_1, accuracy: 0.26600000262260437
+Dataset: snow_2, accuracy: 0.18769998848438263
+Dataset: snow_3, accuracy: 0.16579999029636383
+Dataset: snow_4, accuracy: 0.10989999771118164
+Dataset: snow_5, accuracy: 0.121799997985363
+Dataset: fog_1, accuracy: 0.4129999876022339
+Dataset: fog_2, accuracy: 0.38119998574256897
+Dataset: fog_3, accuracy: 0.3513999879360199
+Dataset: fog_4, accuracy: 0.30799999833106995
+Dataset: fog_5, accuracy: 0.2087000012397766
+Dataset: brightness_1, accuracy: 0.4781000018119812
+Dataset: brightness_2, accuracy: 0.44929999113082886
+Dataset: brightness_3, accuracy: 0.4088999927043915
+Dataset: brightness_4, accuracy: 0.36319997906684875
+Dataset: brightness_5, accuracy: 0.30320000648498535

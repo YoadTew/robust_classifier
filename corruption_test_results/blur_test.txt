@@ -1,0 +1,68 @@
+color_weight_1_pretrain_true_consistent/model_best.pth.tar
+
+Dataset: zoom_blur_1, accuracy: 0.42339998483657837
+Dataset: zoom_blur_2, accuracy: 0.39079999923706055
+Dataset: zoom_blur_3, accuracy: 0.34540000557899475
+Dataset: zoom_blur_4, accuracy: 0.3028999865055084
+Dataset: zoom_blur_5, accuracy: 0.25450000166893005
+Dataset: glass_blur_1, accuracy: 0.4123999774456024
+Dataset: glass_blur_2, accuracy: 0.3902999758720398
+Dataset: glass_blur_3, accuracy: 0.3157999813556671
+Dataset: glass_blur_4, accuracy: 0.3037000000476837
+Dataset: glass_blur_5, accuracy: 0.26510000228881836
+Dataset: defocus_blur_1, accuracy: 0.4034999907016754
+Dataset: defocus_blur_2, accuracy: 0.4017999768257141
+Dataset: defocus_blur_3, accuracy: 0.41509997844696045
+Dataset: defocus_blur_4, accuracy: 0.36319997906684875
+Dataset: defocus_blur_5, accuracy: 0.26579999923706055
+Dataset: motion_blur_1, accuracy: 0.4619999825954437
+Dataset: motion_blur_2, accuracy: 0.45899999141693115
+Dataset: motion_blur_3, accuracy: 0.4113999903202057
+Dataset: motion_blur_4, accuracy: 0.3131999969482422
+Dataset: motion_blur_5, accuracy: 0.23479999601840973
+
+shape_weight_0_pretrain_true/model_best.pth.tar
+
+Dataset: zoom_blur_1, accuracy: 0.2798999845981598
+Dataset: zoom_blur_2, accuracy: 0.21279999613761902
+Dataset: zoom_blur_3, accuracy: 0.16869999468326569
+Dataset: zoom_blur_4, accuracy: 0.13509999215602875
+Dataset: zoom_blur_5, accuracy: 0.11209999769926071
+Dataset: glass_blur_1, accuracy: 0.32659998536109924
+Dataset: glass_blur_2, accuracy: 0.2320999950170517
+Dataset: glass_blur_3, accuracy: 0.13459999859333038
+Dataset: glass_blur_4, accuracy: 0.09779999405145645
+Dataset: glass_blur_5, accuracy: 0.06199999898672104
+Dataset: defocus_blur_1, accuracy: 0.2653000056743622
+Dataset: defocus_blur_2, accuracy: 0.17239999771118164
+Dataset: defocus_blur_3, accuracy: 0.0754999965429306
+Dataset: defocus_blur_4, accuracy: 0.038100000470876694
+Dataset: defocus_blur_5, accuracy: 0.025599999353289604
+Dataset: motion_blur_1, accuracy: 0.3755999803543091
+Dataset: motion_blur_2, accuracy: 0.2628999948501587
+Dataset: motion_blur_3, accuracy: 0.1501999944448471
+Dataset: motion_blur_4, accuracy: 0.07989999651908875
+Dataset: motion_blur_5, accuracy: 0.05469999834895134
+
+shape_weight_1_pretrain_true_consistent/model_best.pth.tar
+
+Dataset: zoom_blur_1, accuracy: 0.26510000228881836
+Dataset: zoom_blur_2, accuracy: 0.19179999828338623
+Dataset: zoom_blur_3, accuracy: 0.14959999918937683
+Dataset: zoom_blur_4, accuracy: 0.11659999936819077
+Dataset: zoom_blur_5, accuracy: 0.09479999542236328
+Dataset: glass_blur_1, accuracy: 0.314300000667572
+Dataset: glass_blur_2, accuracy: 0.20229999721050262
+Dataset: glass_blur_3, accuracy: 0.09290000051259995
+Dataset: glass_blur_4, accuracy: 0.06629999727010727
+Dataset: glass_blur_5, accuracy: 0.04099999740719795
+Dataset: defocus_blur_1, accuracy: 0.2678999900817871
+Dataset: defocus_blur_2, accuracy: 0.1678999960422516
+Dataset: defocus_blur_3, accuracy: 0.06539999693632126
+Dataset: defocus_blur_4, accuracy: 0.03350000083446503
+Dataset: defocus_blur_5, accuracy: 0.02149999886751175
+Dataset: motion_blur_1, accuracy: 0.3872999846935272
+Dataset: motion_blur_2, accuracy: 0.2483000010251999
+Dataset: motion_blur_3, accuracy: 0.13169999420642853
+Dataset: motion_blur_4, accuracy: 0.06109999865293503
+Dataset: motion_blur_5, accuracy: 0.044199999421834946
