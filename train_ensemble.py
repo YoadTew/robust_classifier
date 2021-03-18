@@ -29,6 +29,7 @@ def get_args():
 
     parser.add_argument("--img_dir", default='/home/work/Datasets/Tiny-ImageNet-original', help="Images dir path")
 
+    parser.add_argument('--use_weight_net', action='store_true', help='Load pretrain model')
     parser.add_argument('--resume_edge', default='checkpoints/shape/weight_1_pretrain_sgd/model_best.pth.tar', type=str,
                         help='path to edge model checkpoint (default: none)')
     parser.add_argument('--resume_color', default='checkpoints/color/weight_1_pretrain_sgd/model_best.pth.tar', type=str,
@@ -36,8 +37,8 @@ def get_args():
     parser.add_argument('--resume_ensemble', default='', type=str,
                         help='path to color model checkpoint (default: none)')
 
-    parser.add_argument("--checkpoint", default='checkpoints/ensemble/sgd', help="Logs dir path")
-    parser.add_argument("--log_dir", default='logs/ensemble/sgd', help="Logs dir path")
+    parser.add_argument("--checkpoint", default='checkpoints/ensemble/sgd/no_activation_weights_params', help="Logs dir path")
+    parser.add_argument("--log_dir", default='logs/ensemble/sgd/no_activation_weights_params', help="Logs dir path")
     parser.add_argument("--log_prefix", default='', help="Logs dir path")
 
     return parser.parse_args()
@@ -80,7 +81,7 @@ class Trainer:
         color_checkpoint = torch.load(args.resume_color)
         color_model.load_state_dict(color_checkpoint['state_dict'])
 
-        self.ensemble_model = EnsembleNet(edge_model, color_model, n_classes=200).to(device)
+        self.ensemble_model = EnsembleNet(edge_model, color_model, n_classes=200, use_weight_net=args.use_weight_net).to(device)
 
         if args.resume_ensemble and os.path.isfile(args.resume_ensemble):
             print(f'Loading checkpoint {args.resume_ensemble}')
@@ -95,7 +96,7 @@ class Trainer:
 
         # self.optimizer = torch.optim.AdamW(self.ensemble_model.get_trainable_params(), lr=args.learning_rate)
         self.optimizer = optim.SGD(self.ensemble_model.get_trainable_params(), lr=args.learning_rate, momentum=0.9)
-        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=int(args.epochs * .3))
+        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=5)
 
         self.criterion = nn.CrossEntropyLoss()
         cudnn.benchmark = True

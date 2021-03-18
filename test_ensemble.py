@@ -19,8 +19,9 @@ def get_args():
     parser.add_argument('--pretrained', action='store_true', help='Load pretrain model')
     parser.add_argument("--n_workers", type=int, default=4, help="Number of workers for dataloader")
 
-    parser.add_argument("--img_dir", default='/home/work/Datasets/ImageNet-C/blur', help="Images dir path")
+    parser.add_argument("--img_dir", default='/home/work/Datasets/ImageNet-C', help="Images dir path")
 
+    parser.add_argument('--use_weight_net', action='store_true', help='Use weight net')
     parser.add_argument('--resume_edge',
                         default='checkpoints/shape/weight_1_pretrain_sgd/model_best.pth.tar',
                         type=str,
@@ -30,7 +31,7 @@ def get_args():
                         type=str,
                         help='path to color model checkpoint (default: none)')
     parser.add_argument('--resume_ensemble',
-                        default='checkpoints/ensemble/sgd/model_best.pth.tar',
+                        default='checkpoints/ensemble/sgd/no_activation_weights_params/model_best.pth.tar',
                         type=str,
                         help='path to color model checkpoint (default: none)')
 
@@ -51,7 +52,7 @@ class Tester:
         color_checkpoint = torch.load(args.resume_color)
         color_model.load_state_dict(color_checkpoint['state_dict'])
 
-        self.ensemble_model = EnsembleNet(edge_model, color_model, n_classes=200).to(device)
+        self.ensemble_model = EnsembleNet(edge_model, color_model, n_classes=200, use_weight_net=args.use_weight_net).to(device)
 
         if args.resume_ensemble and os.path.isfile(args.resume_ensemble):
             print(f'Loading checkpoint {args.resume_ensemble}')
@@ -66,6 +67,7 @@ class Tester:
         cudnn.benchmark = True
 
     def do_testing(self):
+        curruption_errors = []
         aug_accuracies = []
         for loader, data_name in get_test_loaders(self.args):
             accuracy = self.do_test(loader)
@@ -76,9 +78,11 @@ class Tester:
                 aug_name = data_name.split('_')[0]
                 mean_acc = sum(aug_accuracies) / 5
                 aug_accuracies = []
+                curruption_errors.append(1 - mean_acc)
 
                 print(f'Mean corruption: {aug_name}, accuracy: {mean_acc}, error: {1 - mean_acc}')
 
+        print('mCE:', sum(curruption_errors) / len(curruption_errors))
         # accuracy = do_test(self.test_loader)
 
     def do_test(self, loader):
@@ -98,7 +102,7 @@ class Tester:
 
                 class_correct += torch.sum(cls_pred == targets)
 
-            class_accuracy = class_correct / total
+            class_accuracy = class_correct.item() / total
 
             return class_accuracy
 
