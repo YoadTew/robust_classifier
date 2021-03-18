@@ -13,7 +13,7 @@ import json
 
 from models.resnet import resnet18
 from data.data_manager import get_val_loader, get_train_loader
-from data.color.imagenetDataset import imagenetDataset
+from data.imagenetDataset import imagenetDataset
 
 def get_args():
     parser = argparse.ArgumentParser(description="training script",

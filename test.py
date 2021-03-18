@@ -8,6 +8,7 @@ import os
 import sys
 
 from models.resnet import resnet18
+from models.ShapeNet import shapenet18
 from data.data_manager import get_test_loaders
 
 def get_args():
@@ -18,9 +19,9 @@ def get_args():
     parser.add_argument('--pretrained', action='store_true', help='Load pretrain model')
     parser.add_argument("--n_workers", type=int, default=4, help="Number of workers for dataloader")
 
-    parser.add_argument("--img_dir", default='/home/work/Datasets/ImageNet-C/noise', help="Images dir path")
+    parser.add_argument("--img_dir", default='/home/work/Datasets/ImageNet-C', help="Images dir path")
 
-    parser.add_argument('--resume', default='checkpoints/color/weight_1_pretrain_sgd/model_best.pth.tar', type=str,
+    parser.add_argument('--resume', default='checkpoints/shape/shapenet_weight_1_distance_layer4/model_best.pth.tar', type=str,
                         help='path to latest checkpoint (default: none)')
 
     return parser.parse_args()
@@ -30,7 +31,7 @@ class Tester:
         self.args = args
         self.device = device
 
-        model = resnet18(pretrained=args.pretrained, num_classes=200)
+        model = shapenet18(pretrained=args.pretrained, num_classes=200)
         self.model = model.to(device)
 
         if args.resume and os.path.isfile(args.resume):
@@ -46,6 +47,7 @@ class Tester:
         cudnn.benchmark = True
 
     def do_testing(self):
+        curruption_errors = []
         aug_accuracies = []
         for loader, data_name in get_test_loaders(self.args):
             accuracy = self.do_test(loader)
@@ -56,8 +58,11 @@ class Tester:
                 aug_name = data_name.split('_')[0]
                 mean_acc = sum(aug_accuracies) / 5
                 aug_accuracies = []
+                curruption_errors.append(1 - mean_acc)
 
                 print(f'Mean corruption: {aug_name}, accuracy: {mean_acc}, error: {1 - mean_acc}')
+
+        print('mCE:', sum(curruption_errors) / len(curruption_errors))
 
         # accuracy = do_test(self.test_loader)
 
@@ -76,7 +81,7 @@ class Tester:
 
                 _, cls_pred = outputs.max(dim=1)
 
-                class_correct += torch.sum(cls_pred == targets)
+                class_correct += torch.sum(cls_pred == targets).item()
 
             class_accuracy = class_correct / total
 

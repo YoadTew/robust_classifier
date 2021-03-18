@@ -28,9 +28,8 @@ def colroize_loader(path):
         return Image.fromarray(np.zeros((4, 4))).convert('RGB')
 
 class imagenetDataset(data.Dataset):
-    def __init__(self, img_dir, transform=None, target_transform=None, loader=default_loader):
+    def __init__(self, img_dir, transform=None, target_transform=None, loader=default_loader, use_sobel=False, use_color=False):
         self.images = []
-        self.colorized_imgs = []
         self.targets = []
         self.class_str_to_id = {}
         self.class_id_to_str = {}
@@ -38,6 +37,13 @@ class imagenetDataset(data.Dataset):
         self.loader = loader
         self.transform = transform
         self.target_transform = target_transform
+        self.use_sobel = use_sobel
+        self.use_color = use_color
+
+        if use_sobel:
+            self.sobels = []
+        if use_color:
+            self.colorized_imgs = []
 
         img_classes = glob.glob(f'{img_dir}/*')
 
@@ -52,19 +58,27 @@ class imagenetDataset(data.Dataset):
                 img_name = img_path.split('/')[-1]
 
                 self.images.append(img_path)
-                self.colorized_imgs.append(f'{img_dir}/{img_class}/colorize/{img_name}')
                 self.targets.append(idx)
 
+                if use_sobel:
+                    self.sobels.append(f'{img_dir}/{img_class}/sobel/{img_name}')
+                if use_color:
+                    self.colorized_imgs.append(f'{img_dir}/{img_class}/colorize/{img_name}')
+
     def __getitem__(self, index):
-        img_path, colorized_path = self.images[index], self.colorized_imgs[index]
+        img_path = self.images[index]
         sample = self.loader(img_path)
-        colorized = colroize_loader(colorized_path)
+
+        if self.use_color:
+            colorized_path = self.colorized_imgs[index]
+            colorized = colroize_loader(colorized_path)
+        if self.use_sobel:
+            sobel_path = self.sobels[index]
+            sobel = self.loader(sobel_path)
 
         target = self.targets[index]
-        # target = torch.LongTensor(target)
 
         if self.transform is not None:
-
             # Need this for colorized transform consistency
             seed = np.random.randint(2147483647)
 
@@ -72,13 +86,27 @@ class imagenetDataset(data.Dataset):
             torch.manual_seed(seed)  # needed for torchvision 0.7
             sample = self.transform(sample)
 
-            random.seed(seed)  # apply this seed to img tranfsorms
-            torch.manual_seed(seed)  # needed for torchvision 0.7
-            colorized = self.transform(colorized)
+            if self.use_sobel:
+                random.seed(seed)  # apply this seed to img tranfsorms
+                torch.manual_seed(seed)  # needed for torchvision 0.7
+                sobel = self.transform(sobel)
+
+            if self.use_color:
+                random.seed(seed)  # apply this seed to img tranfsorms
+                torch.manual_seed(seed)  # needed for torchvision 0.7
+                colorized = self.transform(colorized)
+
         if self.target_transform is not None:
             target = self.target_transform(target)
 
-        return sample, target, colorized
+        extra_params = {}
+
+        if self.use_sobel:
+            extra_params['sobel'] = sobel
+        if self.use_color:
+            extra_params['color'] = colorized
+
+        return sample, target, extra_params
 
     def __len__(self):
         return len(self.images)

@@ -5,7 +5,7 @@ import os
 
 import glob
 
-def get_train_loader(args, dataset_class):
+def get_train_loader(args, dataset_class, use_sobel=False, use_color=False):
     # Data loading code
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
@@ -15,7 +15,7 @@ def get_train_loader(args, dataset_class):
         normalize,
     ])
 
-    dataset = dataset_class(f'{args.img_dir}/train', transform=img_transform)
+    dataset = dataset_class(f'{args.img_dir}/train', transform=img_transform, use_sobel=use_sobel, use_color=use_color)
 
     train_dataloader = data.DataLoader(dataset, num_workers=args.n_workers, batch_size=args.batch_size, shuffle=True, drop_last=True)
 

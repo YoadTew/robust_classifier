@@ -11,9 +11,9 @@ import shutil
 import sys
 import json
 
-from models.resnet import resnet18
+from models.ShapeNet import shapenet18
 from data.data_manager import get_val_loader, get_train_loader
-from data.shape.imagenetDataset import imagenetDataset
+from data.imagenetDataset import imagenetDataset
 
 def get_args():
     parser = argparse.ArgumentParser(description="training script",
@@ -24,15 +24,15 @@ def get_args():
 
     parser.add_argument("--learning_rate", "-l", type=float, default=.001, help="Learning rate")
     parser.add_argument("--epochs", "-e", type=int, default=30, help="Number of epochs")
-    parser.add_argument("--shape_loss_weight", type=float, default=10., help="Shape loss weight")
+    parser.add_argument("--shape_loss_weight", type=float, default=1., help="Shape loss weight")
     parser.add_argument("--n_workers", type=int, default=4, help="Number of workers for dataloader")
 
     parser.add_argument("--img_dir", default='/home/work/Datasets/Tiny-ImageNet-original', help="Images dir path")
 
     parser.add_argument('--resume', default='', type=str,
                         help='path to latest checkpoint (default: none)')
-    parser.add_argument("--checkpoint", default='checkpoints/shape/weight_10_pretrain_sgd', help="Logs dir path")
-    parser.add_argument("--log_dir", default='logs/shape/weight_10_pretrain_sgd', help="Logs dir path")
+    parser.add_argument("--checkpoint", default='checkpoints/shape/shapenet_weight_1_distance_layer4', help="Logs dir path")
+    parser.add_argument("--log_dir", default='logs/shape/shapenet_weight_1_distance_layer4', help="Logs dir path")
     parser.add_argument("--log_prefix", default='', help="Logs dir path")
 
     return parser.parse_args()
@@ -62,10 +62,10 @@ class Trainer:
         self.start_epoch = 0
         self.best_acc = 0
 
-        model = resnet18(pretrained=args.pretrained, num_classes=200)
+        model = shapenet18(pretrained=args.pretrained, num_classes=200)
         self.model = model.to(device)
 
-        self.train_loader = get_train_loader(args, imagenetDataset)
+        self.train_loader = get_train_loader(args, imagenetDataset, use_sobel=True)
         self.val_loader = get_val_loader(args, imagenetDataset)
 
         self.optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, momentum=0.9)
@@ -93,16 +93,19 @@ class Trainer:
     def _do_epoch(self, epoch_idx):
         self.model.train()
 
-        for batch_idx, (images, targets, sobels) in enumerate(self.train_loader):
-            images, targets, sobels = images.to(self.device), targets.to(self.device), sobels.to(self.device)
+        for batch_idx, (images, targets, extra_data) in enumerate(self.train_loader):
+            images, targets = images.to(self.device), targets.to(self.device)
+            sobels = extra_data['sobel'].to(self.device)
 
             self.optimizer.zero_grad()
-            outputs, imgs_logits = self.model(images)
-            sobel_outputs, sobels_logits = self.model(sobels)
+            outputs, img_activations = self.model(images)
+            img_features = img_activations['layer_4']
+            sobel_outputs, sobel_activations = self.model(sobels, use_projection=False)
+            sobel_features = sobel_activations['layer_4']
             # outputs = torch.squeeze(outputs)
 
             cls_loss = self.criterion(outputs, targets)
-            shape_loss = self.shape_criterion(imgs_logits, sobels_logits)
+            shape_loss = self.shape_criterion(img_features, sobel_features)
 
             loss = cls_loss + self.args.shape_loss_weight * shape_loss
 
