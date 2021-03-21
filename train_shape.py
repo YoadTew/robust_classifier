@@ -18,7 +18,7 @@ from data.imagenetDataset import imagenetDataset
 def get_args():
     parser = argparse.ArgumentParser(description="training script",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("--batch_size", "-b", type=int, default=64, help="Batch size")
+    parser.add_argument("--batch_size", "-b", type=int, default=32, help="Batch size")
     # parser.add_argument("--image_size", type=int, default=222, help="Image size")
     parser.add_argument('--pretrained', action='store_true', help='Load pretrain model')
 
@@ -28,12 +28,13 @@ def get_args():
 
     parser.add_argument("--shape_loss_weight", type=float, default=0., help="Shape loss weight")
     parser.add_argument("--color_loss_weight", type=float, default=1., help="Color loss weight")
+    parser.add_argument("--distance_criterion", type=str, default='cosine', help="MSE or cosine")
 
     parser.add_argument("--img_dir", default='/home/work/Datasets/Tiny-ImageNet-original', help="Images dir path")
 
     parser.add_argument('--resume', default='', type=str,
                         help='path to latest checkpoint (default: none)')
-    parser.add_argument("--experiment", default='experiments/resnet50/shape=0_color=1_loss=MSE_optim=SGD_batch=64',
+    parser.add_argument("--experiment", default='experiments/resnet50/shape=0_color=1_loss=cosine_optim=SGD',
                         help="Logs dir path")
 
     args = parser.parse_args()
@@ -61,6 +62,14 @@ def save_args_json(args):
     with open(f'{args.log_dir}/args.json', 'w') as outfile:
         json.dump(args_dict, outfile, indent=4, sort_keys=True)
 
+def MSE_loss(criterion, pred, target, device='cuda'):
+    return criterion(pred, target)
+
+def cosine_loss(criterion, pred, target, device='cuda'):
+    indication = torch.tensor(1, device=device)
+
+    return criterion(pred, target, indication)
+
 class Trainer:
     def __init__(self, args, device):
         self.args = args
@@ -83,7 +92,14 @@ class Trainer:
         # self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=self.args.epochs)
 
         self.criterion = nn.CrossEntropyLoss()
-        self.shape_criterion = nn.MSELoss()
+
+        if args.distance_criterion == 'MSE':
+            self.shape_criterion = nn.MSELoss()
+            self.distance_loss_func = MSE_loss
+        elif args.distance_criterion == 'cosine':
+            self.shape_criterion = nn.CosineEmbeddingLoss()
+            self.distance_loss_func = cosine_loss
+
 
         if args.resume and os.path.isfile(args.resume):
             print(f'Loading checkpoint {args.resume}')
@@ -120,10 +136,10 @@ class Trainer:
             loss += cls_loss
 
             if self.use_shape:
-                target = torch.tensor(1, device=self.device)
+
                 sobel_outputs, sobel_activations = self.model(sobels, use_projection=False)
                 sobel_features = sobel_activations['representation']
-                shape_loss = self.shape_criterion(img_features, sobel_features)
+                shape_loss = self.distance_loss_func(self.shape_criterion, img_features, sobel_features, self.device)
 
                 self.writer.add_scalar('shape_loss_train', shape_loss.item(),
                                        epoch_idx * len(self.train_loader) + batch_idx)
@@ -131,10 +147,9 @@ class Trainer:
                 loss += self.args.shape_loss_weight * shape_loss
 
             if self.use_color:
-                target = torch.tensor(1, device=self.device)
                 color_outputs, color_activations = self.model(colored, use_projection=False)
                 color_features = color_activations['representation']
-                color_loss = self.shape_criterion(img_features, color_features)
+                color_loss = self.distance_loss_func(self.shape_criterion, img_features, color_features, self.device)
 
                 self.writer.add_scalar('color_loss_train', color_loss.item(),
                                        epoch_idx * len(self.train_loader) + batch_idx)
