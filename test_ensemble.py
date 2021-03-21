@@ -31,7 +31,7 @@ def get_args():
                         type=str,
                         help='path to color model checkpoint (default: none)')
     parser.add_argument('--resume_ensemble',
-                        default='checkpoints/ensemble/sgd/no_activation_weights_params/model_best.pth.tar',
+                        default='checkpoints/ensemble/sgd/sigmoid_dropout_0.2/model_best.pth.tar',
                         type=str,
                         help='path to color model checkpoint (default: none)')
 
@@ -52,7 +52,7 @@ class Tester:
         color_checkpoint = torch.load(args.resume_color)
         color_model.load_state_dict(color_checkpoint['state_dict'])
 
-        self.ensemble_model = EnsembleNet(edge_model, color_model, n_classes=200, use_weight_net=args.use_weight_net).to(device)
+        self.ensemble_model = EnsembleNet(edge_model, color_model, n_classes=200, use_weight_net=True).to(device)
 
         if args.resume_ensemble and os.path.isfile(args.resume_ensemble):
             print(f'Loading checkpoint {args.resume_ensemble}')

@@ -8,7 +8,7 @@ import os
 import sys
 
 from models.resnet import resnet18
-from models.ShapeNet import shapenet18
+from models.ShapeNet import shapenet18, shapenet50
 from data.data_manager import get_test_loaders
 
 def get_args():
@@ -21,7 +21,7 @@ def get_args():
 
     parser.add_argument("--img_dir", default='/home/work/Datasets/ImageNet-C', help="Images dir path")
 
-    parser.add_argument('--resume', default='checkpoints/shape/shapenet_weight_1_distance_layer4/model_best.pth.tar', type=str,
+    parser.add_argument('--resume', default='experiments/resnet50/shape=1_color=0_loss=MSE_optim=SGD/checkpoints/model_best.pth.tar', type=str,
                         help='path to latest checkpoint (default: none)')
 
     return parser.parse_args()
@@ -31,7 +31,7 @@ class Tester:
         self.args = args
         self.device = device
 
-        model = shapenet18(pretrained=args.pretrained, num_classes=200)
+        model = shapenet50(pretrained=args.pretrained, num_classes=200)
         self.model = model.to(device)
 
         if args.resume and os.path.isfile(args.resume):

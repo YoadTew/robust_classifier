@@ -11,31 +11,37 @@ import shutil
 import sys
 import json
 
-from models.ShapeNet import shapenet18
+from models.ShapeNet import shapenet18, shapenet50
 from data.data_manager import get_val_loader, get_train_loader
 from data.imagenetDataset import imagenetDataset
 
 def get_args():
     parser = argparse.ArgumentParser(description="training script",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("--batch_size", "-b", type=int, default=32, help="Batch size")
+    parser.add_argument("--batch_size", "-b", type=int, default=64, help="Batch size")
     # parser.add_argument("--image_size", type=int, default=222, help="Image size")
     parser.add_argument('--pretrained', action='store_true', help='Load pretrain model')
 
     parser.add_argument("--learning_rate", "-l", type=float, default=.001, help="Learning rate")
     parser.add_argument("--epochs", "-e", type=int, default=30, help="Number of epochs")
-    parser.add_argument("--shape_loss_weight", type=float, default=1., help="Shape loss weight")
     parser.add_argument("--n_workers", type=int, default=4, help="Number of workers for dataloader")
+
+    parser.add_argument("--shape_loss_weight", type=float, default=0., help="Shape loss weight")
+    parser.add_argument("--color_loss_weight", type=float, default=1., help="Color loss weight")
 
     parser.add_argument("--img_dir", default='/home/work/Datasets/Tiny-ImageNet-original', help="Images dir path")
 
     parser.add_argument('--resume', default='', type=str,
                         help='path to latest checkpoint (default: none)')
-    parser.add_argument("--checkpoint", default='checkpoints/shape/shapenet_weight_1_distance_layer4', help="Logs dir path")
-    parser.add_argument("--log_dir", default='logs/shape/shapenet_weight_1_distance_layer4', help="Logs dir path")
-    parser.add_argument("--log_prefix", default='', help="Logs dir path")
+    parser.add_argument("--experiment", default='experiments/resnet50/shape=0_color=1_loss=MSE_optim=SGD_batch=64',
+                        help="Logs dir path")
 
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    args.checkpoint = f'{args.experiment}/checkpoints'
+    args.log_dir = f'{args.experiment}/logs'
+
+    return args
 
 def save_checkpoint(state, is_best, checkpoint='checkpoint', filename='checkpoint.pth.tar'):
     if not os.path.exists(checkpoint):
@@ -62,15 +68,18 @@ class Trainer:
         self.start_epoch = 0
         self.best_acc = 0
 
-        model = shapenet18(pretrained=args.pretrained, num_classes=200)
+        self.use_shape = (self.args.shape_loss_weight > 0)
+        self.use_color = (self.args.color_loss_weight > 0)
+
+        model = shapenet50(pretrained=args.pretrained, num_classes=200)
         self.model = model.to(device)
 
-        self.train_loader = get_train_loader(args, imagenetDataset, use_sobel=True)
+        self.train_loader = get_train_loader(args, imagenetDataset, use_sobel=self.use_shape, use_color=self.use_color)
         self.val_loader = get_val_loader(args, imagenetDataset)
 
         self.optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, momentum=0.9)
         # self.optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate)
-        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=int(args.epochs * .3))
+        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=int(args.epochs * .2))
         # self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=self.args.epochs)
 
         self.criterion = nn.CrossEntropyLoss()
@@ -95,32 +104,55 @@ class Trainer:
 
         for batch_idx, (images, targets, extra_data) in enumerate(self.train_loader):
             images, targets = images.to(self.device), targets.to(self.device)
-            sobels = extra_data['sobel'].to(self.device)
+
+            if self.use_shape:
+                sobels = extra_data['sobel'].to(self.device)
+            if self.use_color:
+                colored = extra_data['color'].to(self.device)
 
             self.optimizer.zero_grad()
             outputs, img_activations = self.model(images)
-            img_features = img_activations['layer_4']
-            sobel_outputs, sobel_activations = self.model(sobels, use_projection=False)
-            sobel_features = sobel_activations['layer_4']
-            # outputs = torch.squeeze(outputs)
+            img_features = img_activations['representation']
+
+            loss = 0.
 
             cls_loss = self.criterion(outputs, targets)
-            shape_loss = self.shape_criterion(img_features, sobel_features)
+            loss += cls_loss
 
-            loss = cls_loss + self.args.shape_loss_weight * shape_loss
+            if self.use_shape:
+                target = torch.tensor(1, device=self.device)
+                sobel_outputs, sobel_activations = self.model(sobels, use_projection=False)
+                sobel_features = sobel_activations['representation']
+                shape_loss = self.shape_criterion(img_features, sobel_features)
+
+                self.writer.add_scalar('shape_loss_train', shape_loss.item(),
+                                       epoch_idx * len(self.train_loader) + batch_idx)
+
+                loss += self.args.shape_loss_weight * shape_loss
+
+            if self.use_color:
+                target = torch.tensor(1, device=self.device)
+                color_outputs, color_activations = self.model(colored, use_projection=False)
+                color_features = color_activations['representation']
+                color_loss = self.shape_criterion(img_features, color_features)
+
+                self.writer.add_scalar('color_loss_train', color_loss.item(),
+                                       epoch_idx * len(self.train_loader) + batch_idx)
+
+                loss += self.args.color_loss_weight * color_loss
 
             if batch_idx % 30 == 1:
                 print(f'epoch:  {epoch_idx}/{self.args.epochs}, batch: {batch_idx}/{len(self.train_loader)}, '
-                      f'loss: {loss.item()}, cls_loss: {cls_loss.item()}, shape_loss: {shape_loss.item()}')
+                      f'loss: {loss.item()}, cls_loss: {cls_loss.item()}, extra_losses: {loss.item() - cls_loss.item()}')
 
             self.writer.add_scalar('loss_train', loss.item(), epoch_idx * len(self.train_loader) + batch_idx)
             self.writer.add_scalar('cls_loss_train', cls_loss.item(), epoch_idx * len(self.train_loader) + batch_idx)
-            self.writer.add_scalar('shape_loss_train', shape_loss.item(), epoch_idx * len(self.train_loader) + batch_idx)
 
             loss.backward()
             self.optimizer.step()
 
         self.model.eval()
+
         with torch.no_grad():
             total = len(self.val_loader.dataset)
             class_correct = self.do_test(self.val_loader)
