@@ -8,6 +8,7 @@ import os
 import sys
 
 from models.resnet import resnet18
+from models.ShapeNet import shapenet18, shapenet50
 from models.ensemble_network import EnsembleNet
 from data.data_manager import get_test_loaders
 
@@ -23,15 +24,15 @@ def get_args():
 
     parser.add_argument('--use_weight_net', action='store_true', help='Use weight net')
     parser.add_argument('--resume_edge',
-                        default='checkpoints/shape/weight_1_pretrain_sgd/model_best.pth.tar',
+                        default='experiments/resnet50/shape=1_color=0_loss=MSE_optim=SGD/checkpoints/model_best.pth.tar',
                         type=str,
                         help='path to edge model checkpoint (default: none)')
     parser.add_argument('--resume_color',
-                        default='checkpoints/color/weight_1_pretrain_sgd/model_best.pth.tar',
+                        default='experiments/resnet50/shape=0_color=1_loss=MSE_optim=SGD/checkpoints/model_best.pth.tar',
                         type=str,
                         help='path to color model checkpoint (default: none)')
     parser.add_argument('--resume_ensemble',
-                        default='checkpoints/ensemble/sgd/sigmoid_dropout_0.2/model_best.pth.tar',
+                        default='experiments/ensemble50/optim=SGD/checkpoints/model_best.pth.tar',
                         type=str,
                         help='path to color model checkpoint (default: none)')
 
@@ -43,16 +44,16 @@ class Tester:
         self.device = device
 
         # Loads shape model
-        edge_model = resnet18(pretrained=args.pretrained, num_classes=200).to(device)
+        edge_model = shapenet50(pretrained=args.pretrained, num_classes=200).to(device)
         edge_checkpoint = torch.load(args.resume_edge)
         edge_model.load_state_dict(edge_checkpoint['state_dict'])
 
         # Loads color model
-        color_model = resnet18(pretrained=args.pretrained, num_classes=200).to(device)
+        color_model = shapenet50(pretrained=args.pretrained, num_classes=200).to(device)
         color_checkpoint = torch.load(args.resume_color)
         color_model.load_state_dict(color_checkpoint['state_dict'])
 
-        self.ensemble_model = EnsembleNet(edge_model, color_model, n_classes=200, use_weight_net=True).to(device)
+        self.ensemble_model = EnsembleNet(edge_model, color_model, n_classes=200, use_weight_net=False, device=device).to(device)
 
         if args.resume_ensemble and os.path.isfile(args.resume_ensemble):
             print(f'Loading checkpoint {args.resume_ensemble}')

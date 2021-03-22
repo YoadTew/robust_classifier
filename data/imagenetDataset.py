@@ -5,6 +5,7 @@ import numpy as np
 import random
 import torch
 import os
+import cv2
 
 def pil_loader(path):
     # open path as file to avoid ResourceWarning (https://github.com/python-pillow/Pillow/issues/835)
@@ -19,13 +20,19 @@ def default_loader(path):
     # else:
     return pil_loader(path)
 
-def colroize_loader(path):
-    if os.path.isfile(path):
-        with open(path, 'rb') as f:
-            img = Image.open(f)
-            return img.convert('RGB')
-    else:
-        return Image.fromarray(np.zeros((4, 4))).convert('RGB')
+
+def pil_to_sobel(image):
+    gray = image.convert("L")
+    np_gray = np.array(gray, dtype=np.uint8)
+
+    sobelx = cv2.Sobel(np_gray, cv2.CV_64F, 1, 0, ksize=5)  # x
+    sobely = cv2.Sobel(np_gray, cv2.CV_64F, 0, 1, ksize=5)  # y
+    sobel = np.sqrt(sobelx ** 2 + sobely ** 2)
+    sobel = (sobel / sobel.max() * 255)
+
+    pil_sobel = Image.fromarray(sobel).convert("RGB")
+
+    return pil_sobel
 
 class imagenetDataset(data.Dataset):
     def __init__(self, img_dir, transform=None, target_transform=None, loader=default_loader, use_sobel=False, use_color=False):
@@ -71,10 +78,10 @@ class imagenetDataset(data.Dataset):
 
         if self.use_color:
             colorized_path = self.colorized_imgs[index]
-            colorized = colroize_loader(colorized_path)
+            colorized = pil_loader(colorized_path)
         if self.use_sobel:
-            sobel_path = self.sobels[index]
-            sobel = self.loader(sobel_path)
+            sobel = pil_to_sobel(sample)
+            sobel = Image.blend(sobel, sample, 0.15)
 
         target = self.targets[index]
 
@@ -99,14 +106,14 @@ class imagenetDataset(data.Dataset):
         if self.target_transform is not None:
             target = self.target_transform(target)
 
-        extra_params = {}
+        extra_data = {}
 
         if self.use_sobel:
-            extra_params['sobel'] = sobel
+            extra_data['sobel'] = sobel
         if self.use_color:
-            extra_params['color'] = colorized
+            extra_data['color'] = colorized
 
-        return sample, target, extra_params
+        return sample, target, extra_data
 
     def __len__(self):
         return len(self.images)

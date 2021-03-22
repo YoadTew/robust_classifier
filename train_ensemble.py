@@ -12,15 +12,16 @@ import sys
 import json
 
 from models.resnet import resnet18
+from models.ShapeNet import shapenet50, shapenet18
 from models.ensemble_network import EnsembleNet
 from data.data_manager import get_val_loader, get_train_loader
-from data.shape.imagenetDataset import imagenetDataset
+from data.imagenetDataset import imagenetDataset
 
 def get_args():
     parser = argparse.ArgumentParser(description="training script",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--batch_size", "-b", type=int, default=32, help="Batch size")
-    # parser.add_argument("--image_size", type=int, default=222, help="Image size")
+    parser.add_argument("--accumulate_batches", type=int, default=4, help="Number of batch to accumulate")
     parser.add_argument('--pretrained', action='store_true', help='Load pretrain model')
 
     parser.add_argument("--learning_rate", "-l", type=float, default=.001, help="Learning rate")
@@ -30,16 +31,22 @@ def get_args():
     parser.add_argument("--img_dir", default='/home/work/Datasets/Tiny-ImageNet-original', help="Images dir path")
 
     parser.add_argument('--use_weight_net', action='store_true', help='Load pretrain model')
-    parser.add_argument('--resume_edge', default='checkpoints/shape/weight_1_pretrain_sgd/model_best.pth.tar', type=str,
+    parser.add_argument('--resume_edge', default='experiments/resnet50/shape=1_color=0_loss=MSE_optim=SGD/checkpoints/model_best.pth.tar', type=str,
                         help='path to edge model checkpoint (default: none)')
-    parser.add_argument('--resume_color', default='checkpoints/color/weight_1_pretrain_sgd/model_best.pth.tar', type=str,
+    parser.add_argument('--resume_color', default='experiments/resnet50/shape=0_color=1_loss=MSE_optim=SGD/checkpoints/model_best.pth.tar', type=str,
                         help='path to color model checkpoint (default: none)')
     parser.add_argument('--resume_ensemble', default='', type=str,
                         help='path to color model checkpoint (default: none)')
 
-    parser.add_argument("--checkpoint", default='checkpoints/ensemble/sgd/no_activation_weights_params', help="Logs dir path")
-    parser.add_argument("--log_dir", default='logs/ensemble/sgd/no_activation_weights_params', help="Logs dir path")
-    parser.add_argument("--log_prefix", default='', help="Logs dir path")
+    parser.add_argument("--experiment", default='experiments/ensemble50/optim=SGD',
+                        help="Logs dir path")
+
+    args = parser.parse_args()
+
+    args.checkpoint = f'{args.experiment}/checkpoints'
+    args.log_dir = f'{args.experiment}/logs'
+
+    return args
 
     return parser.parse_args()
 
@@ -72,16 +79,16 @@ class Trainer:
         self.val_loader = get_val_loader(args, imagenetDataset)
 
         # Loads shape model
-        edge_model = resnet18(pretrained=args.pretrained, num_classes=200).to(device)
+        edge_model = shapenet50(pretrained=args.pretrained, num_classes=200).to(device)
         edge_checkpoint = torch.load(args.resume_edge)
         edge_model.load_state_dict(edge_checkpoint['state_dict'])
 
         # Loads color model
-        color_model = resnet18(pretrained=args.pretrained, num_classes=200).to(device)
+        color_model = shapenet50(pretrained=args.pretrained, num_classes=200).to(device)
         color_checkpoint = torch.load(args.resume_color)
         color_model.load_state_dict(color_checkpoint['state_dict'])
 
-        self.ensemble_model = EnsembleNet(edge_model, color_model, n_classes=200, use_weight_net=args.use_weight_net).to(device)
+        self.ensemble_model = EnsembleNet(edge_model, color_model, n_classes=200, use_weight_net=args.use_weight_net, device=device).to(device)
 
         if args.resume_ensemble and os.path.isfile(args.resume_ensemble):
             print(f'Loading checkpoint {args.resume_ensemble}')
@@ -109,6 +116,7 @@ class Trainer:
             images, targets = images.to(self.device), targets.to(self.device)
 
             self.optimizer.zero_grad()
+
             outputs = self.ensemble_model(images)
 
             loss = self.criterion(outputs, targets)

@@ -19,22 +19,22 @@ def get_args():
     parser = argparse.ArgumentParser(description="training script",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--batch_size", "-b", type=int, default=32, help="Batch size")
-    # parser.add_argument("--image_size", type=int, default=222, help="Image size")
+    parser.add_argument("--accumulate_batches", type=int, default=1, help="Number of batch to accumulate")
     parser.add_argument('--pretrained', action='store_true', help='Load pretrain model')
 
     parser.add_argument("--learning_rate", "-l", type=float, default=.001, help="Learning rate")
     parser.add_argument("--epochs", "-e", type=int, default=30, help="Number of epochs")
     parser.add_argument("--n_workers", type=int, default=4, help="Number of workers for dataloader")
 
-    parser.add_argument("--shape_loss_weight", type=float, default=0., help="Shape loss weight")
-    parser.add_argument("--color_loss_weight", type=float, default=1., help="Color loss weight")
-    parser.add_argument("--distance_criterion", type=str, default='cosine', help="MSE or cosine")
+    parser.add_argument("--shape_loss_weight", type=float, default=1., help="Shape loss weight")
+    parser.add_argument("--color_loss_weight", type=float, default=0., help="Color loss weight")
+    parser.add_argument("--distance_criterion", type=str, default='MSE', help="MSE or cosine")
 
     parser.add_argument("--img_dir", default='/home/work/Datasets/Tiny-ImageNet-original', help="Images dir path")
 
     parser.add_argument('--resume', default='', type=str,
                         help='path to latest checkpoint (default: none)')
-    parser.add_argument("--experiment", default='experiments/resnet50/shape=0_color=1_loss=cosine_optim=SGD',
+    parser.add_argument("--experiment", default='experiments/resnet50/shape=1_color=0_loss=MSE_optim=SGD_interpolate_0.15',
                         help="Logs dir path")
 
     args = parser.parse_args()
@@ -117,6 +117,7 @@ class Trainer:
 
     def _do_epoch(self, epoch_idx):
         self.model.train()
+        self.optimizer.zero_grad()
 
         for batch_idx, (images, targets, extra_data) in enumerate(self.train_loader):
             images, targets = images.to(self.device), targets.to(self.device)
@@ -126,7 +127,7 @@ class Trainer:
             if self.use_color:
                 colored = extra_data['color'].to(self.device)
 
-            self.optimizer.zero_grad()
+
             outputs, img_activations = self.model(images)
             img_features = img_activations['representation']
 
@@ -164,7 +165,13 @@ class Trainer:
             self.writer.add_scalar('cls_loss_train', cls_loss.item(), epoch_idx * len(self.train_loader) + batch_idx)
 
             loss.backward()
-            self.optimizer.step()
+
+            if (batch_idx+1) % self.args.accumulate_batches == 0:
+                self.optimizer.step()
+                self.optimizer.zero_grad()
+
+        self.optimizer.step()
+        self.optimizer.zero_grad()
 
         self.model.eval()
 
