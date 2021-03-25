@@ -6,6 +6,19 @@ import numpy as np
 
 from models.resnet import resnet18
 
+def gram_matrix(input):
+    a, b, c, d = input.size()  # a=batch size(=1)
+    # b=number of feature maps
+    # (c,d)=dimensions of a f. map (N=c*d)
+
+    features = input.view(a, b, c * d)  # resise F_XL into \hat F_XL
+
+    G = torch.bmm(features, features.transpose(1,2))  # compute the gram product
+
+    # we 'normalize' the values of the gram matrix
+    # by dividing by the number of element in each feature maps.
+    return G.div(a * b * c * d)
+
 class WeightNet(nn.Module):
     def __init__(self, n_weights):
         super(WeightNet, self).__init__()
@@ -38,7 +51,6 @@ class EnsembleNet(nn.Module):
         self.dropout = nn.Dropout(p=0.25)
 
         self.project = nn.Linear(self.edge_model.fc.in_features * self.n_classifiers, n_classes)
-
     def forward(self, x):
         _, features_edge = self.edge_model(x)
         _, features_color = self.color_model(x)
@@ -50,9 +62,8 @@ class EnsembleNet(nn.Module):
             weights = self.weights_net(x)
             weights = weights.unsqueeze(-1)
         else:
-            weights = self.weights
-            # weights = self.dropout(weights)
-            weights = weights.view(1, -1, 1)
+            weights = torch.ones((x.size(0), self.n_classifiers, 1), device=x.device)
+            weights = self.dropout(weights)
 
         weighted_features = weights * torch.stack([features_edge, features_color], dim=1)
         weighted_features = weighted_features.view(features_edge.size(0), -1)

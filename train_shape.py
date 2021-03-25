@@ -34,7 +34,7 @@ def get_args():
 
     parser.add_argument('--resume', default='', type=str,
                         help='path to latest checkpoint (default: none)')
-    parser.add_argument("--experiment", default='experiments/resnet50/shape=1_color=0_loss=MSE_optim=SGD_interpolate_0.15',
+    parser.add_argument("--experiment", default='experiments/resnet50/shape=1_color=0_loss=MSE_optim=SGD_interpolate_0.15_trainBN',
                         help="Logs dir path")
 
     args = parser.parse_args()
@@ -86,7 +86,7 @@ class Trainer:
         self.train_loader = get_train_loader(args, imagenetDataset, use_sobel=self.use_shape, use_color=self.use_color)
         self.val_loader = get_val_loader(args, imagenetDataset)
 
-        self.optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, momentum=0.9)
+        self.optimizer = optim.SGD(model.get_trainable_params(), lr=args.learning_rate, momentum=0.9)
         # self.optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate)
         self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=int(args.epochs * .2))
         # self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=self.args.epochs)

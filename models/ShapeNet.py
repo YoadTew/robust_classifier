@@ -126,6 +126,19 @@ class ShapeNet(nn.Module):
     def forward(self, x, use_projection=False):
         return self._forward_impl(x, use_projection)
 
+    def get_trainable_params(self):
+        def freeze_all_but_bn(m):
+            if not isinstance(m, torch.nn.modules.batchnorm._BatchNorm):
+                if hasattr(m, 'weight') and m.weight is not None:
+                    m.weight.requires_grad_(False)
+                if hasattr(m, 'bias') and m.bias is not None:
+                    m.bias.requires_grad_(False)
+
+        self.apply(freeze_all_but_bn)
+        self.fc.requires_grad_(True)
+
+        return filter(lambda p: p.requires_grad, self.parameters())
+
 def _shapenet(arch, block, layers, pretrained, progress, **kwargs):
     model = ShapeNet(block, layers, **kwargs)
     if pretrained:

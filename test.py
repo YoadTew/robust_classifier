@@ -21,7 +21,7 @@ def get_args():
 
     parser.add_argument("--img_dir", default='/home/work/Datasets/ImageNet-C', help="Images dir path")
 
-    parser.add_argument('--resume', default='experiments/resnet50/shape=1_color=1_loss=MSE_optim=SGD/checkpoints/model_best.pth.tar', type=str,
+    parser.add_argument('--resume', default='experiments/resnet50/shape=1_color=0_loss=MSE_optim=SGD_interpolate_0.15_trainBN/checkpoints/model_best.pth.tar', type=str,
                         help='path to latest checkpoint (default: none)')
 
     return parser.parse_args()
