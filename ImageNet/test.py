@@ -9,7 +9,7 @@ import sys
 
 from models.resnet import resnet18
 from models.ShapeNet import shapenet18, shapenet50
-from data_smallImagenet.data_manager import get_test_loaders
+from ImageNet.data.data_manager import get_test_loaders
 
 def get_args():
     parser = argparse.ArgumentParser(description="testing script",
@@ -21,7 +21,7 @@ def get_args():
 
     parser.add_argument("--img_dir", default='/home/work/Datasets/ImageNet-C', help="Images dir path")
 
-    parser.add_argument('--resume', default='experiments/resnet50/shape=0_color=1_loss=MSE_optim=SGD_trainBN/checkpoints/model_best.pth.tar', type=str,
+    parser.add_argument('--resume', default='experiments/ImageNetSubset/resnet50/shape=0_color=1_loss=MSE_optim=SGD_trainBN/checkpoints/model_best.pth.tar', type=str,
                         help='path to latest checkpoint (default: none)')
 
     return parser.parse_args()

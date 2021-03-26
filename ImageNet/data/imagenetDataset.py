@@ -20,7 +20,6 @@ def default_loader(path):
     # else:
     return pil_loader(path)
 
-
 def pil_to_sobel(image):
     gray = image.convert("L")
     np_gray = np.array(gray, dtype=np.uint8)

@@ -1,6 +1,6 @@
 from torch.utils import data
 import torchvision.transforms as transforms
-from data_smallImagenet.imagenetCorruptedDataset import imagenetCorruptedDataset
+from ImageNet.data.imagenetCorruptedDataset import imagenetCorruptedDataset
 import os
 
 import glob

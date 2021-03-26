@@ -11,34 +11,30 @@ import shutil
 import sys
 import json
 
-from models.resnet import resnet18
-from models.ShapeNet import shapenet50, shapenet18
-from models.ensemble_network import EnsembleNet
-from data_smallImagenet.data_manager import get_val_loader, get_train_loader
-from data_smallImagenet.imagenetDataset import imagenetDataset
+from models.ShapeNet import shapenet18, shapenet50
+from data.data_manager import get_val_loader, get_train_loader
+from data.imagenetDataset import imagenetDataset
 
 def get_args():
     parser = argparse.ArgumentParser(description="training script",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--batch_size", "-b", type=int, default=32, help="Batch size")
-    parser.add_argument("--accumulate_batches", type=int, default=4, help="Number of batch to accumulate")
+    parser.add_argument("--accumulate_batches", type=int, default=1, help="Number of batch to accumulate")
     parser.add_argument('--pretrained', action='store_true', help='Load pretrain model')
 
     parser.add_argument("--learning_rate", "-l", type=float, default=.001, help="Learning rate")
     parser.add_argument("--epochs", "-e", type=int, default=30, help="Number of epochs")
     parser.add_argument("--n_workers", type=int, default=4, help="Number of workers for dataloader")
 
+    parser.add_argument("--shape_loss_weight", type=float, default=0., help="Shape loss weight")
+    parser.add_argument("--color_loss_weight", type=float, default=1., help="Color loss weight")
+    parser.add_argument("--distance_criterion", type=str, default='MSE', help="MSE or cosine")
+
     parser.add_argument("--img_dir", default='/home/work/Datasets/Tiny-ImageNet-original', help="Images dir path")
 
-    parser.add_argument('--use_weight_net', action='store_true', help='Load pretrain model')
-    parser.add_argument('--resume_edge', default='experiments/resnet50/shape=1_color=0_loss=MSE_optim=SGD_interpolate_0.15_trainBN/checkpoints/model_best.pth.tar', type=str,
-                        help='path to edge model checkpoint (default: none)')
-    parser.add_argument('--resume_color', default='experiments/resnet50/shape=0_color=1_loss=MSE_optim=SGD_trainBN/checkpoints/model_best.pth.tar', type=str,
-                        help='path to color model checkpoint (default: none)')
-    parser.add_argument('--resume_ensemble', default='', type=str,
-                        help='path to color model checkpoint (default: none)')
-
-    parser.add_argument("--experiment", default='experiments/ensemble50/optim=SGD_shape_trainBN_color_trainBN',
+    parser.add_argument('--resume', default='', type=str,
+                        help='path to latest checkpoint (default: none)')
+    parser.add_argument("--experiment", default='experiments/resnet50/shape=0_color=1_loss=MSE_optim=SGD_trainBN',
                         help="Logs dir path")
 
     args = parser.parse_args()
@@ -47,8 +43,6 @@ def get_args():
     args.log_dir = f'{args.experiment}/logs'
 
     return args
-
-    return parser.parse_args()
 
 def save_checkpoint(state, is_best, checkpoint='checkpoint', filename='checkpoint.pth.tar'):
     if not os.path.exists(checkpoint):
@@ -68,6 +62,14 @@ def save_args_json(args):
     with open(f'{args.log_dir}/args.json', 'w') as outfile:
         json.dump(args_dict, outfile, indent=4, sort_keys=True)
 
+def MSE_loss(criterion, pred, target, device='cuda'):
+    return criterion(pred, target)
+
+def cosine_loss(criterion, pred, target, device='cuda'):
+    indication = torch.tensor(1, device=device)
+
+    return criterion(pred, target, indication)
+
 class Trainer:
     def __init__(self, args, device):
         self.args = args
@@ -75,62 +77,102 @@ class Trainer:
         self.start_epoch = 0
         self.best_acc = 0
 
-        self.train_loader = get_train_loader(args, imagenetDataset)
+        self.use_shape = (self.args.shape_loss_weight > 0)
+        self.use_color = (self.args.color_loss_weight > 0)
+
+        model = shapenet50(pretrained=args.pretrained, num_classes=200)
+        self.model = model.to(device)
+
+        self.train_loader = get_train_loader(args, imagenetDataset, use_sobel=self.use_shape, use_color=self.use_color)
         self.val_loader = get_val_loader(args, imagenetDataset)
 
-        # Loads shape model
-        edge_model = shapenet50(pretrained=args.pretrained, num_classes=200).to(device)
-        edge_checkpoint = torch.load(args.resume_edge)
-        edge_model.load_state_dict(edge_checkpoint['state_dict'])
-
-        # Loads color model
-        color_model = shapenet50(pretrained=args.pretrained, num_classes=200).to(device)
-        color_checkpoint = torch.load(args.resume_color)
-        color_model.load_state_dict(color_checkpoint['state_dict'])
-
-        self.ensemble_model = EnsembleNet(edge_model, color_model, n_classes=200, use_weight_net=args.use_weight_net, device=device).to(device)
-
-        if args.resume_ensemble and os.path.isfile(args.resume_ensemble):
-            print(f'Loading checkpoint {args.resume_ensemble}')
-
-            checkpoint = torch.load(args.resume_ensemble)
-            self.start_epoch = checkpoint['epoch']
-            self.best_acc = checkpoint['best_prec1']
-            self.ensemble_model.load_state_dict(checkpoint['state_dict'])
-            self.optimizer.load_state_dict(checkpoint['optimizer'])
-
-            print(f'Loaded checkpoint {args.resume_ensemble}, starting from epoch {self.start_epoch}')
-
-        # self.optimizer = torch.optim.AdamW(self.ensemble_model.get_trainable_params(), lr=args.learning_rate)
-        self.optimizer = optim.SGD(self.ensemble_model.get_trainable_params(), lr=args.learning_rate, momentum=0.9)
-        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=5)
+        self.optimizer = optim.SGD(model.get_trainable_params(), lr=args.learning_rate, momentum=0.9)
+        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=int(args.epochs * .2))
+        # self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=self.args.epochs)
 
         self.criterion = nn.CrossEntropyLoss()
+
+        if args.distance_criterion == 'MSE':
+            self.shape_criterion = nn.MSELoss()
+            self.distance_loss_func = MSE_loss
+        elif args.distance_criterion == 'cosine':
+            self.shape_criterion = nn.CosineEmbeddingLoss()
+            self.distance_loss_func = cosine_loss
+
+
+        if args.resume and os.path.isfile(args.resume):
+            print(f'Loading checkpoint {args.resume}')
+
+            checkpoint = torch.load(args.resume)
+            self.start_epoch = checkpoint['epoch']
+            self.best_acc = checkpoint['best_prec1']
+            self.model.load_state_dict(checkpoint['state_dict'])
+            self.optimizer.load_state_dict(checkpoint['optimizer'])
+
+            print(f'Loaded checkpoint {args.resume}, starting from epoch {self.start_epoch}')
+
         cudnn.benchmark = True
         self.writer = SummaryWriter(log_dir=str(args.log_dir))
 
     def _do_epoch(self, epoch_idx):
-        self.ensemble_model.train()
+        self.model.train()
+        self.optimizer.zero_grad()
 
-        for batch_idx, (images, targets, _) in enumerate(self.train_loader):
+        for batch_idx, (images, targets, extra_data) in enumerate(self.train_loader):
             images, targets = images.to(self.device), targets.to(self.device)
 
-            self.optimizer.zero_grad()
+            if self.use_shape:
+                sobels = extra_data['sobel'].to(self.device)
+            if self.use_color:
+                colored = extra_data['color'].to(self.device)
 
-            outputs = self.ensemble_model(images)
 
-            loss = self.criterion(outputs, targets)
+            outputs, img_activations = self.model(images)
+            img_features = img_activations['representation']
+
+            loss = 0.
+
+            cls_loss = self.criterion(outputs, targets)
+            loss += cls_loss
+
+            if self.use_shape:
+
+                sobel_outputs, sobel_activations = self.model(sobels, use_projection=False)
+                sobel_features = sobel_activations['representation']
+                shape_loss = self.distance_loss_func(self.shape_criterion, img_features, sobel_features, self.device)
+
+                self.writer.add_scalar('shape_loss_train', shape_loss.item(),
+                                       epoch_idx * len(self.train_loader) + batch_idx)
+
+                loss += self.args.shape_loss_weight * shape_loss
+
+            if self.use_color:
+                color_outputs, color_activations = self.model(colored, use_projection=False)
+                color_features = color_activations['representation']
+                color_loss = self.distance_loss_func(self.shape_criterion, img_features, color_features, self.device)
+
+                self.writer.add_scalar('color_loss_train', color_loss.item(),
+                                       epoch_idx * len(self.train_loader) + batch_idx)
+
+                loss += self.args.color_loss_weight * color_loss
 
             if batch_idx % 30 == 1:
                 print(f'epoch:  {epoch_idx}/{self.args.epochs}, batch: {batch_idx}/{len(self.train_loader)}, '
-                      f'loss: {loss.item()}')
+                      f'loss: {loss.item()}, cls_loss: {cls_loss.item()}, extra_losses: {loss.item() - cls_loss.item()}')
 
             self.writer.add_scalar('loss_train', loss.item(), epoch_idx * len(self.train_loader) + batch_idx)
+            self.writer.add_scalar('cls_loss_train', cls_loss.item(), epoch_idx * len(self.train_loader) + batch_idx)
 
             loss.backward()
-            self.optimizer.step()
 
-        self.ensemble_model.eval()
+            if (batch_idx+1) % self.args.accumulate_batches == 0:
+                self.optimizer.step()
+                self.optimizer.zero_grad()
+
+        self.optimizer.step()
+        self.optimizer.zero_grad()
+
+        self.model.eval()
 
         with torch.no_grad():
             total = len(self.val_loader.dataset)
@@ -147,7 +189,7 @@ class Trainer:
             print(f'Saving {checkpoint_name} to dir {self.args.checkpoint}')
             save_checkpoint({
                 'epoch': epoch_idx + 1,
-                'state_dict': self.ensemble_model.state_dict(),
+                'state_dict': self.model.state_dict(),
                 'best_prec1': self.best_acc,
                 'optimizer': self.optimizer.state_dict(),
             }, is_best, checkpoint=self.args.checkpoint, filename=checkpoint_name)
@@ -161,7 +203,7 @@ class Trainer:
             inputs, targets = inputs.to(self.device), targets.to(self.device)
 
             # forward
-            outputs = self.ensemble_model(inputs)
+            outputs, _ = self.model(inputs)
 
             _, cls_pred = outputs.max(dim=1)
 

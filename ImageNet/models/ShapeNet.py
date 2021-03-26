@@ -1,10 +1,8 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.hub import load_state_dict_from_url
-import numpy as np
 
-from models.resnet import Bottleneck, BasicBlock, conv1x1, conv3x3, model_urls
+from ImageNet.models.resnet import Bottleneck, BasicBlock, conv1x1, model_urls
 
 class ShapeNet(nn.Module):
 
@@ -154,7 +152,7 @@ def shapenet18(pretrained=False, progress=True, num_classes=1000, **kwargs):
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    net = _shapenet('resnet18', BasicBlock, [2, 2, 2, 2], pretrained, progress,
+    net = _shapenet('shapenet18', BasicBlock, [2, 2, 2, 2], pretrained, progress,
                    **kwargs)
     num_ftrs = net.fc.in_features
     net.fc = nn.Linear(num_ftrs, num_classes)

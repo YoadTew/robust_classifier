@@ -14,7 +14,7 @@ __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101']
 
 
 model_urls = {
-    'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
+    'shapenet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
     'resnet34': 'https://download.pytorch.org/models/resnet34-333f7ec4.pth',
     'resnet50': 'https://download.pytorch.org/models/resnet50-19c8e357.pth',
     'resnet101': 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth',
@@ -238,7 +238,7 @@ def resnet18_old(pretrained=False, progress=True, **kwargs):
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _resnet('resnet18', BasicBlock, [2, 2, 2, 2], pretrained, progress,
+    return _resnet('shapenet18', BasicBlock, [2, 2, 2, 2], pretrained, progress,
                    **kwargs)
 
 def resnet18(pretrained=False, progress=True, num_classes=1000, **kwargs):
@@ -248,7 +248,7 @@ def resnet18(pretrained=False, progress=True, num_classes=1000, **kwargs):
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    net = _resnet('resnet18', BasicBlock, [2, 2, 2, 2], pretrained, progress,
+    net = _resnet('shapenet18', BasicBlock, [2, 2, 2, 2], pretrained, progress,
                    **kwargs)
     num_ftrs = net.fc.in_features
     net.fc = nn.Linear(num_ftrs, num_classes)
