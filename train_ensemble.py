@@ -14,8 +14,8 @@ import json
 from models.resnet import resnet18
 from models.ShapeNet import shapenet50, shapenet18
 from models.ensemble_network import EnsembleNet
-from data.data_manager import get_val_loader, get_train_loader
-from data.imagenetDataset import imagenetDataset
+from data_smallImagenet.data_manager import get_val_loader, get_train_loader
+from data_smallImagenet.imagenetDataset import imagenetDataset
 
 def get_args():
     parser = argparse.ArgumentParser(description="training script",

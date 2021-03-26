@@ -9,7 +9,7 @@ import sys
 
 from models.resnet import resnet18
 from models.ShapeNet import shapenet18, shapenet50
-from data.data_manager import get_test_loaders
+from data_smallImagenet.data_manager import get_test_loaders
 
 def get_args():
     parser = argparse.ArgumentParser(description="testing script",
