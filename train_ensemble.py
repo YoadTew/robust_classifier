@@ -31,14 +31,14 @@ def get_args():
     parser.add_argument("--img_dir", default='/home/work/Datasets/Tiny-ImageNet-original', help="Images dir path")
 
     parser.add_argument('--use_weight_net', action='store_true', help='Load pretrain model')
-    parser.add_argument('--resume_edge', default='experiments/resnet50/shape=1_color=0_loss=MSE_optim=SGD_interpolate=0.15/checkpoints/model_best.pth.tar', type=str,
+    parser.add_argument('--resume_edge', default='experiments/resnet50/shape=1_color=0_loss=MSE_optim=SGD_interpolate_0.15_trainBN/checkpoints/model_best.pth.tar', type=str,
                         help='path to edge model checkpoint (default: none)')
-    parser.add_argument('--resume_color', default='experiments/resnet50/shape=0_color=0_loss=MSE_optim=SGD/checkpoints/model_best.pth.tar', type=str,
+    parser.add_argument('--resume_color', default='experiments/resnet50/shape=0_color=1_loss=MSE_optim=SGD_trainBN/checkpoints/model_best.pth.tar', type=str,
                         help='path to color model checkpoint (default: none)')
     parser.add_argument('--resume_ensemble', default='', type=str,
                         help='path to color model checkpoint (default: none)')
 
-    parser.add_argument("--experiment", default='experiments/ensemble50/optim=SGD_Resnet50+Shape_gramMatrix',
+    parser.add_argument("--experiment", default='experiments/ensemble50/optim=SGD_shape_trainBN_color_trainBN',
                         help="Logs dir path")
 
     args = parser.parse_args()
