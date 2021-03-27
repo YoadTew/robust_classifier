@@ -11,11 +11,11 @@ import shutil
 import sys
 import json
 
-from CIFAR100.data.data_manager import get_val_loader, get_train_loader
-from CIFAR100.data.CIFAR100Dataset import CIFAR100Dataset
-from CIFAR100.models.ShapeNet import shapenet18
-from CIFAR100.models.resnet_CIFAR import resnet18
-from CIFAR100.models.resnext import resnext29
+from data.data_manager import get_val_loader, get_train_loader
+from data.CIFAR100Dataset import CIFAR100Dataset
+from models.ShapeNet import shapenet18
+from models.resnet_CIFAR import resnet18
+from models.resnext import resnext29
 
 
 def get_args():

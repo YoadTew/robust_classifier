@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.hub import load_state_dict_from_url
 
-from CIFAR100.models.resnet import Bottleneck, BasicBlock, conv1x1, model_urls
+from models.resnet import Bottleneck, BasicBlock, conv1x1, model_urls
 
 class ShapeNet(nn.Module):
 
