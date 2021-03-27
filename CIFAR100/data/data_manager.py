@@ -1,6 +1,7 @@
 from torch.utils import data
 import torchvision.transforms as transforms
 import os
+import torchvision
 
 import glob
 
@@ -23,6 +24,7 @@ def get_train_loader(args, dataset_class, use_sobel=False, use_color=False):
     ])
 
     dataset = dataset_class(f'{args.img_dir}/train', transform=img_transform, use_sobel=use_sobel, use_color=use_color)
+    # dataset = torchvision.datasets.CIFAR100(root='/home/work/Datasets/CIFAR100', train=True, download=True, transform=img_transform)
 
     train_dataloader = data.DataLoader(dataset, num_workers=args.n_workers, batch_size=args.batch_size, shuffle=True,
                                        drop_last=True)
@@ -39,6 +41,7 @@ def get_val_loader(args, dataset_class):
     ])
 
     dataset = dataset_class(f'{args.img_dir}/test', transform=img_transform)
+    # dataset = torchvision.datasets.CIFAR100(root='/home/work/Datasets/CIFAR100', train=False, download=True, transform=img_transform)
 
     train_dataloader = data.DataLoader(dataset, num_workers=args.n_workers, batch_size=args.batch_size, shuffle=True,
                                        drop_last=True)

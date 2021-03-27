@@ -4,7 +4,6 @@ import torch
 from torch import nn, optim
 import torch.backends.cudnn as cudnn
 from torch.utils.tensorboard import SummaryWriter
-from torch.optim.lr_scheduler import _LRScheduler
 import numpy as np
 import random
 import os
@@ -16,6 +15,7 @@ from CIFAR100.data.data_manager import get_val_loader, get_train_loader
 from CIFAR100.data.CIFAR100Dataset import CIFAR100Dataset
 from CIFAR100.models.ShapeNet import shapenet18
 from CIFAR100.models.resnet_CIFAR import resnet18
+from CIFAR100.models.resnext import resnext29
 
 
 def get_args():
@@ -26,9 +26,9 @@ def get_args():
 
     parser.add_argument("--learning_rate", "-l", type=float, default=0.1, help="Learning rate")
     parser.add_argument("--MILESTONES", nargs='*', default=[60, 120, 160], help="Learning rate")
-    parser.add_argument("--warm", type=int, default=1, help="Warmup epochs")
     parser.add_argument("--epochs", "-e", type=int, default=200, help="Number of epochs")
     parser.add_argument("--n_workers", type=int, default=4, help="Number of workers for dataloader")
+    parser.add_argument("--data_parallel", action='store_true', help='Run on all visible gpus')
 
     parser.add_argument("--shape_loss_weight", type=float, default=0., help="Shape loss weight")
     parser.add_argument("--color_loss_weight", type=float, default=0., help="Color loss weight")
@@ -38,7 +38,7 @@ def get_args():
 
     parser.add_argument('--resume', default='', type=str,
                         help='path to latest checkpoint (default: none)')
-    parser.add_argument("--experiment", default='../experiments/CIFAR100/resnet18/shape=0_color=0_warmup',
+    parser.add_argument("--experiment", default='../experiments/CIFAR100/resnext29/shape=0_color=0',
                         help="Logs dir path")
     parser.add_argument("--save_checkpoint_interval", type=int, default=10, help="Save checkpoints every i epochs")
 
@@ -70,23 +70,6 @@ def save_args_json(args):
 def MSE_loss(criterion, pred, target, device='cuda'):
     return criterion(pred, target)
 
-class WarmUpLR(_LRScheduler):
-    """warmup_training learning rate scheduler
-    Args:
-        optimizer: optimzier(e.g. SGD)
-        total_iters: totoal_iters of warmup phase
-    """
-    def __init__(self, optimizer, total_iters, last_epoch=-1):
-
-        self.total_iters = total_iters
-        super().__init__(optimizer, last_epoch)
-
-    def get_lr(self):
-        """we will use the first m batches, and set the learning
-        rate to base_lr * m / total_iters
-        """
-        return [base_lr * self.last_epoch / (self.total_iters + 1e-8) for base_lr in self.base_lrs]
-
 class Trainer:
     def __init__(self, args, device):
         self.args = args
@@ -97,15 +80,19 @@ class Trainer:
         self.use_shape = (self.args.shape_loss_weight > 0)
         self.use_color = (self.args.color_loss_weight > 0)
 
-        model = resnet18()
+        model = resnext29(num_classes=100)
+
+        if args.data_parallel:
+            model = torch.nn.DataParallel(model)
+
         self.model = model.to(device)
 
         self.train_loader = get_train_loader(args, CIFAR100Dataset, use_sobel=self.use_shape, use_color=self.use_color)
         self.val_loader = get_val_loader(args, CIFAR100Dataset)
 
-        self.optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, momentum=0.9, weight_decay=5e-4)
+        self.optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, momentum=0.9, weight_decay=5e-4, nesterov=True)
         self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=self.args.MILESTONES, gamma=0.2)
-        self.warmup_scheduler = WarmUpLR(self.optimizer, len(self.train_loader) * args.warm)
+        # self.warmup_scheduler = WarmUpLR(self.optimizer, len(self.train_loader) * args.warm)
 
         self.criterion = nn.CrossEntropyLoss()
 
@@ -131,9 +118,6 @@ class Trainer:
 
         for batch_idx, (images, targets, extra_data) in enumerate(self.train_loader):
             images, targets = images.to(self.device), targets.to(self.device)
-
-            if (epoch_idx + 1) <= self.args.warm:
-                self.warmup_scheduler.step()
 
             self.optimizer.zero_grad()
 
