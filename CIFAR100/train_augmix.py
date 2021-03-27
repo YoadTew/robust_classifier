@@ -11,10 +11,8 @@ import shutil
 import sys
 import json
 
-from data.data_manager import get_val_loader, get_train_loader
+from data.augmix_data_manager import get_val_loader, get_train_loader
 from data.CIFAR100Dataset import CIFAR100Dataset
-from models.ShapeNet import shapenet18
-from models.resnet_CIFAR import resnet18
 from models.resnext import resnext29
 
 
@@ -38,7 +36,7 @@ def get_args():
 
     parser.add_argument('--resume', default='', type=str,
                         help='path to latest checkpoint (default: none)')
-    parser.add_argument("--experiment", default='experiments/CIFAR100/resnext29/shape=0_color=0',
+    parser.add_argument("--experiment", default='experiments/CIFAR100/resnext29_lol/shape=0_color=0',
                         help="Logs dir path")
     parser.add_argument("--save_checkpoint_interval", type=int, default=10, help="Save checkpoints every i epochs")
 
@@ -237,11 +235,12 @@ def main():
         args.n_workers = 0
 
     save_args_json(args)
+
+    return None
     trainer = Trainer(args, device)
     best_val_acc = trainer.do_training()
 
 if __name__ == "__main__":
-    # torchfunc.cuda.reset()
     torch.cuda.empty_cache()
     torch.backends.cudnn.benchmark = True
     main()
