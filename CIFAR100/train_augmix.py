@@ -4,6 +4,7 @@ import torch
 from torch import nn, optim
 import torch.backends.cudnn as cudnn
 from torch.utils.tensorboard import SummaryWriter
+import torch.nn.functional as F
 import numpy as np
 import random
 import os
@@ -23,8 +24,7 @@ def get_args():
     parser.add_argument('--pretrained', action='store_true', help='Load pretrain model')
 
     parser.add_argument("--learning_rate", "-l", type=float, default=0.1, help="Learning rate")
-    parser.add_argument("--MILESTONES", nargs='*', default=[60, 120, 160], help="Learning rate")
-    parser.add_argument("--epochs", "-e", type=int, default=200, help="Number of epochs")
+    parser.add_argument("--epochs", "-e", type=int, default=100, help="Number of epochs")
     parser.add_argument("--n_workers", type=int, default=4, help="Number of workers for dataloader")
     parser.add_argument("--data_parallel", action='store_true', help='Run on all visible gpus')
 
@@ -32,11 +32,38 @@ def get_args():
     parser.add_argument("--color_loss_weight", type=float, default=0., help="Color loss weight")
     parser.add_argument("--distance_criterion", type=str, default='MSE', help="MSE or cosine")
 
+    # AugMix options
+    parser.add_argument(
+        '--mixture-width',
+        default=3,
+        type=int,
+        help='Number of augmentation chains to mix per augmented example')
+    parser.add_argument(
+        '--mixture-depth',
+        default=-1,
+        type=int,
+        help='Depth of augmentation chains. -1 denotes stochastic depth in [1, 3]')
+    parser.add_argument(
+        '--aug-severity',
+        default=3,
+        type=int,
+        help='Severity of base augmentation operators')
+    parser.add_argument(
+        '--no-jsd',
+        '-nj',
+        action='store_true',
+        help='Turn off JSD consistency loss.')
+    parser.add_argument(
+        '--all-ops',
+        '-all',
+        action='store_true',
+        help='Turn on all operations (+brightness,contrast,color,sharpness).')
+
     parser.add_argument("--img_dir", default='/home/work/Datasets/CIFAR100/cifar-100', help="Images dir path")
 
     parser.add_argument('--resume', default='', type=str,
                         help='path to latest checkpoint (default: none)')
-    parser.add_argument("--experiment", default='experiments/CIFAR100/resnext29_lol/shape=0_color=0',
+    parser.add_argument("--experiment", default='experiments/CIFAR100/augmix_resnext29/shape=0_color=0',
                         help="Logs dir path")
     parser.add_argument("--save_checkpoint_interval", type=int, default=10, help="Save checkpoints every i epochs")
 
@@ -68,6 +95,11 @@ def save_args_json(args):
 def MSE_loss(criterion, pred, target, device='cuda'):
     return criterion(pred, target)
 
+def get_lr(step, total_steps, lr_max, lr_min):
+  """Compute learning rate according to cosine annealing schedule."""
+  return lr_min + (lr_max - lr_min) * 0.5 * (1 +
+                                             np.cos(step / total_steps * np.pi))
+
 class Trainer:
     def __init__(self, args, device):
         self.args = args
@@ -89,9 +121,13 @@ class Trainer:
         self.val_loader = get_val_loader(args, CIFAR100Dataset)
 
         self.optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, momentum=0.9, weight_decay=5e-4, nesterov=True)
-        self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=self.args.MILESTONES, gamma=0.2)
-        # self.warmup_scheduler = WarmUpLR(self.optimizer, len(self.train_loader) * args.warm)
-
+        self.scheduler = torch.optim.lr_scheduler.LambdaLR(
+            self.optimizer,
+            lr_lambda=lambda step: get_lr(  # pylint: disable=g-long-lambda
+                step,
+                args.epochs * len(self.train_loader),
+                1,  # lr_lambda computes multiplicative factor
+                1e-6 / args.learning_rate))
         self.criterion = nn.CrossEntropyLoss()
 
         self.shape_criterion = nn.MSELoss()
@@ -114,57 +150,45 @@ class Trainer:
     def _do_epoch(self, epoch_idx):
         self.model.train()
 
-        for batch_idx, (images, targets, extra_data) in enumerate(self.train_loader):
-            images, targets = images.to(self.device), targets.to(self.device)
-
+        for batch_idx, (images, targets) in enumerate(self.train_loader):
             self.optimizer.zero_grad()
 
-            if self.use_shape:
-                sobels = extra_data['sobel'].to(self.device)
-            if self.use_color:
-                colored = extra_data['color'].to(self.device)
+            if self.args.no_jsd:
+                images, targets = images.to(self.device), targets.to(self.device)
+                logits = self.model(images)
+                loss = F.cross_entropy(logits, targets)
+            else:
+                images_all = torch.cat(images, 0).to(self.device)
+                targets = targets.to(self.device)
+                logits_all = self.model(images_all)
+                logits_clean, logits_aug1, logits_aug2 = torch.split(
+                    logits_all, images[0].size(0))
 
-            outputs, img_activations = self.model(images), {'representation': 0}
-            img_features = img_activations['representation']
+                # Cross-entropy is only computed on clean images
+                loss = F.cross_entropy(logits_clean, targets)
 
-            loss = 0.
+                p_clean, p_aug1, p_aug2 = F.softmax(
+                    logits_clean, dim=1), F.softmax(
+                    logits_aug1, dim=1), F.softmax(
+                    logits_aug2, dim=1)
 
-            cls_loss = self.criterion(outputs, targets)
-            loss += cls_loss
+                # Clamp mixture distribution to avoid exploding KL divergence
+                p_mixture = torch.clamp((p_clean + p_aug1 + p_aug2) / 3., 1e-7, 1).log()
+                loss += 12 * (F.kl_div(p_mixture, p_clean, reduction='batchmean') +
+                              F.kl_div(p_mixture, p_aug1, reduction='batchmean') +
+                              F.kl_div(p_mixture, p_aug2, reduction='batchmean')) / 3.
 
-            if self.use_shape:
-
-                sobel_outputs, sobel_activations = self.model(sobels, use_projection=False)
-                sobel_features = sobel_activations['representation']
-                shape_loss = self.distance_loss_func(self.shape_criterion, img_features, sobel_features, self.device)
-
-                self.writer.add_scalar('shape_loss_train', shape_loss.item(),
-                                       epoch_idx * len(self.train_loader) + batch_idx)
-
-                loss += self.args.shape_loss_weight * shape_loss
-
-            if self.use_color:
-                color_outputs, color_activations = self.model(colored, use_projection=False)
-                color_features = color_activations['representation']
-                color_loss = self.distance_loss_func(self.shape_criterion, img_features, color_features, self.device)
-
-                self.writer.add_scalar('color_loss_train', color_loss.item(),
-                                       epoch_idx * len(self.train_loader) + batch_idx)
-
-                loss += self.args.color_loss_weight * color_loss
 
             if batch_idx % 100 == 1:
                 print(f'epoch:  {epoch_idx}/{self.args.epochs}, batch: {batch_idx}/{len(self.train_loader)}, '
-                      f'loss: {loss.item()}, cls_loss: {cls_loss.item()}, extra_losses: {loss.item() - cls_loss.item()}')
+                      f'loss: {loss.item()}')
 
             n_iter = epoch_idx * len(self.train_loader) + batch_idx
             self.writer.add_scalar('loss_train', loss.item(), n_iter)
-            self.writer.add_scalar('cls_loss_train', cls_loss.item(), n_iter)
 
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5)
-
             self.optimizer.step()
+            self.scheduler.step()
 
             last_layer = list(self.model.children())[-1]
             for name, para in last_layer.named_parameters():
@@ -203,7 +227,7 @@ class Trainer:
             inputs, targets = inputs.to(self.device), targets.to(self.device)
 
             # forward
-            outputs, _ = self.model(inputs), None
+            outputs = self.model(inputs)
 
             _, cls_pred = outputs.max(dim=1)
 
@@ -214,7 +238,6 @@ class Trainer:
     def do_training(self):
         for self.current_epoch in range(self.start_epoch, self.args.epochs):
             self._do_epoch(self.current_epoch)
-            self.scheduler.step()
 
         self.writer.close()
 
@@ -236,7 +259,6 @@ def main():
 
     save_args_json(args)
 
-    return None
     trainer = Trainer(args, device)
     best_val_acc = trainer.do_training()
 

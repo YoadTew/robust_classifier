@@ -23,7 +23,7 @@ def get_train_loader(args, dataset_class, use_sobel=False, use_color=False):
 
 
     dataset = dataset_class(f'{args.img_dir}/train', transform=img_transform, use_sobel=use_sobel, use_color=use_color)
-    dataset = AugMixDataset(dataset, preprocess, args.no_jsd)
+    dataset = AugMixDataset(dataset, preprocess, args, args.no_jsd)
 
     train_dataloader = data.DataLoader(dataset, num_workers=args.n_workers, batch_size=args.batch_size, shuffle=True,
                                        drop_last=True, pin_memory=True)
