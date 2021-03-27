@@ -22,7 +22,7 @@ CORRUPTIONS = [
 def get_args():
     parser = argparse.ArgumentParser(description="testing script",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("--batch_size", "-b", type=int, default=512, help="Batch size")
+    parser.add_argument("--batch_size", "-b", type=int, default=1024, help="Batch size")
     parser.add_argument("--n_workers", type=int, default=4, help="Number of workers for dataloader")
     parser.add_argument("--data_parallel", action='store_true', help='Run on all visible gpus')
 

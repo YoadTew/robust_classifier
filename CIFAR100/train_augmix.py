@@ -24,7 +24,7 @@ def get_args():
     parser.add_argument('--pretrained', action='store_true', help='Load pretrain model')
 
     parser.add_argument("--learning_rate", "-l", type=float, default=0.1, help="Learning rate")
-    parser.add_argument("--epochs", "-e", type=int, default=100, help="Number of epochs")
+    parser.add_argument("--epochs", "-e", type=int, default=200, help="Number of epochs")
     parser.add_argument("--n_workers", type=int, default=4, help="Number of workers for dataloader")
     parser.add_argument("--data_parallel", action='store_true', help='Run on all visible gpus')
 
@@ -211,9 +211,15 @@ class Trainer:
             if is_best or (epoch_idx + 1) % self.args.save_checkpoint_interval == 0:
                 checkpoint_name = f'checkpoint_{epoch_idx + 1}_acc_{round(class_acc, 3)}.pth.tar'
                 print(f'Saving {checkpoint_name} to dir {self.args.checkpoint}')
+
+                if self.args.data_parallel:
+                    state_dict = self.model.module.state_dict()
+                else:
+                    state_dict = self.model.state_dict()
+
                 save_checkpoint({
                     'epoch': epoch_idx + 1,
-                    'state_dict': self.model.state_dict(),
+                    'state_dict': state_dict,
                     'best_prec1': self.best_acc,
                     'optimizer': self.optimizer.state_dict(),
                 }, is_best, checkpoint=self.args.checkpoint, filename=checkpoint_name)
