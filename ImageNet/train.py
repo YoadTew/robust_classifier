@@ -11,7 +11,7 @@ import shutil
 import sys
 import json
 
-from models.ShapeNet import shapenet18, shapenet50
+from models.resnet import resnet50
 from data.data_manager import get_val_loader, get_train_loader
 from data.imagenetDataset import imagenetDataset
 
@@ -88,7 +88,7 @@ class Trainer:
         self.train_loader = get_train_loader(args, imagenetDataset, use_sobel=self.use_shape, use_color=self.use_color)
         self.val_loader = get_val_loader(args, imagenetDataset)
 
-        model = shapenet50(pretrained=args.pretrained, num_classes=200)
+        model = resnet50(pretrained=args.pretrained, num_classes=200)
         self.optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, momentum=args.momentum, weight_decay=args.weight_decay)
         self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=args.MILESTONES, gamma=0.1)
 
