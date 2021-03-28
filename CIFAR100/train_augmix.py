@@ -32,6 +32,14 @@ def get_args():
     parser.add_argument("--color_loss_weight", type=float, default=0., help="Color loss weight")
     parser.add_argument("--distance_criterion", type=str, default='MSE', help="MSE or cosine")
 
+    parser.add_argument("--img_dir", default='/home/work/Datasets/CIFAR100/cifar-100', help="Images dir path")
+
+    parser.add_argument('--resume', default='', type=str,
+                        help='path to latest checkpoint (default: none)')
+    parser.add_argument("--experiment", default='experiments/CIFAR100/augmix_resnext29/shape=0_color=0',
+                        help="Logs dir path")
+    parser.add_argument("--save_checkpoint_interval", type=int, default=10, help="Save checkpoints every i epochs")
+
     # AugMix options
     parser.add_argument(
         '--mixture-width',
@@ -58,14 +66,6 @@ def get_args():
         '-all',
         action='store_true',
         help='Turn on all operations (+brightness,contrast,color,sharpness).')
-
-    parser.add_argument("--img_dir", default='/home/work/Datasets/CIFAR100/cifar-100', help="Images dir path")
-
-    parser.add_argument('--resume', default='', type=str,
-                        help='path to latest checkpoint (default: none)')
-    parser.add_argument("--experiment", default='experiments/CIFAR100/augmix_resnext29/shape=0_color=0',
-                        help="Logs dir path")
-    parser.add_argument("--save_checkpoint_interval", type=int, default=10, help="Save checkpoints every i epochs")
 
     args = parser.parse_args()
 

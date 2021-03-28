@@ -48,21 +48,20 @@ class Tester:
 
         model = resnext29(num_classes=100)
 
-        if args.data_parallel:
-            model = torch.nn.DataParallel(model)
-
-        self.model = model.to(device)
-
-
         if args.resume and os.path.isfile(args.resume):
             print(f'Loading checkpoint {args.resume}')
 
             checkpoint = torch.load(args.resume)
             self.start_epoch = checkpoint['epoch']
             self.best_acc = checkpoint['best_prec1']
-            self.model.load_state_dict(checkpoint['state_dict'])
+            model.load_state_dict(checkpoint['state_dict'])
 
             print(f'Loaded checkpoint {args.resume}, starting from epoch {self.start_epoch}')
+
+        if args.data_parallel:
+            model = torch.nn.DataParallel(model)
+
+        self.model = model.to(device)
 
         cudnn.benchmark = True
 
