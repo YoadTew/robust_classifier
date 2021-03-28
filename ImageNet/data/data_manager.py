@@ -10,6 +10,8 @@ def get_train_loader(args, dataset_class, use_sobel=False, use_color=False):
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
     img_transform = transforms.Compose([
+        transforms.Resize(256),
+        transforms.RandomCrop(224),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         normalize,
@@ -26,6 +28,8 @@ def get_val_loader(args, dataset_class):
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
     img_transform = transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
         transforms.ToTensor(),
         normalize,
     ])
@@ -41,6 +45,8 @@ def get_test_loader(args):
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
     img_transform = transforms.Compose([
+        transforms.Resize(256),
+        transforms.RandomCrop(224),
         transforms.ToTensor(),
         normalize,
     ])

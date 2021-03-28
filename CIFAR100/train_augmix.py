@@ -36,7 +36,7 @@ def get_args():
 
     parser.add_argument('--resume', default='', type=str,
                         help='path to latest checkpoint (default: none)')
-    parser.add_argument("--experiment", default='experiments/CIFAR100/augmix_resnext29/shape=0_color=0',
+    parser.add_argument("--experiment", default='experiments/CIFAR100/dummy/shape=0_color=0',
                         help="Logs dir path")
     parser.add_argument("--save_checkpoint_interval", type=int, default=10, help="Save checkpoints every i epochs")
 
@@ -110,17 +110,13 @@ class Trainer:
         self.use_shape = (self.args.shape_loss_weight > 0)
         self.use_color = (self.args.color_loss_weight > 0)
 
-        model = resnext29(num_classes=100)
-
-        if args.data_parallel:
-            model = torch.nn.DataParallel(model)
-
-        self.model = model.to(device)
-
         self.train_loader = get_train_loader(args, CIFAR100Dataset, use_sobel=self.use_shape, use_color=self.use_color)
         self.val_loader = get_val_loader(args, CIFAR100Dataset)
 
-        self.optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, momentum=0.9, weight_decay=5e-4, nesterov=True)
+        model = resnext29(num_classes=100)
+
+        self.optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, momentum=0.9, weight_decay=5e-4,
+                                   nesterov=True)
         self.scheduler = torch.optim.lr_scheduler.LambdaLR(
             self.optimizer,
             lr_lambda=lambda step: get_lr(  # pylint: disable=g-long-lambda
@@ -128,10 +124,6 @@ class Trainer:
                 args.epochs * len(self.train_loader),
                 1,  # lr_lambda computes multiplicative factor
                 1e-6 / args.learning_rate))
-        self.criterion = nn.CrossEntropyLoss()
-
-        self.shape_criterion = nn.MSELoss()
-        self.distance_loss_func = MSE_loss
 
         if args.resume and os.path.isfile(args.resume):
             print(f'Loading checkpoint {args.resume}')
@@ -139,10 +131,19 @@ class Trainer:
             checkpoint = torch.load(args.resume)
             self.start_epoch = checkpoint['epoch']
             self.best_acc = checkpoint['best_prec1']
-            self.model.load_state_dict(checkpoint['state_dict'])
+            model.load_state_dict(checkpoint['state_dict'])
             self.optimizer.load_state_dict(checkpoint['optimizer'])
 
             print(f'Loaded checkpoint {args.resume}, starting from epoch {self.start_epoch}')
+
+        if args.data_parallel:
+            model = torch.nn.DataParallel(model)
+
+        self.model = model.to(device)
+
+        self.criterion = nn.CrossEntropyLoss()
+        self.shape_criterion = nn.MSELoss()
+        self.distance_loss_func = MSE_loss
 
         cudnn.benchmark = True
         self.writer = SummaryWriter(log_dir=str(args.log_dir))

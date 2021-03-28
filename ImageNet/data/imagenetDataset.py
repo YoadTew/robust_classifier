@@ -33,6 +33,9 @@ def pil_to_sobel(image):
 
     return pil_sobel
 
+def pil_to_colored(image):
+    return image.resize([16, 16]).resize([224, 224])
+
 class imagenetDataset(data.Dataset):
     def __init__(self, img_dir, transform=None, target_transform=None, loader=default_loader, use_sobel=False, use_color=False):
         self.images = []
@@ -46,11 +49,6 @@ class imagenetDataset(data.Dataset):
         self.use_sobel = use_sobel
         self.use_color = use_color
 
-        if use_sobel:
-            self.sobels = []
-        if use_color:
-            self.colorized_imgs = []
-
         img_classes = glob.glob(f'{img_dir}/*')
 
         for idx, img_class_path in enumerate(img_classes):
@@ -61,23 +59,15 @@ class imagenetDataset(data.Dataset):
             imgs_pathes = glob.glob(f'{img_dir}/{img_class}/*.JPEG')
 
             for img_path in imgs_pathes:
-                img_name = img_path.split('/')[-1]
-
                 self.images.append(img_path)
                 self.targets.append(idx)
-
-                if use_sobel:
-                    self.sobels.append(f'{img_dir}/{img_class}/sobel/{img_name}')
-                if use_color:
-                    self.colorized_imgs.append(f'{img_dir}/{img_class}/colorize/{img_name}')
 
     def __getitem__(self, index):
         img_path = self.images[index]
         sample = self.loader(img_path)
 
         if self.use_color:
-            colorized_path = self.colorized_imgs[index]
-            colorized = pil_loader(colorized_path)
+            colorized = pil_to_sobel(sample)
         if self.use_sobel:
             sobel = pil_to_sobel(sample)
             sobel = Image.blend(sobel, sample, 0.15)

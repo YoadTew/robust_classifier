@@ -18,23 +18,28 @@ from data.imagenetDataset import imagenetDataset
 def get_args():
     parser = argparse.ArgumentParser(description="training script",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("--batch_size", "-b", type=int, default=32, help="Batch size")
-    parser.add_argument("--accumulate_batches", type=int, default=1, help="Number of batch to accumulate")
+
     parser.add_argument('--pretrained', action='store_true', help='Load pretrain model')
 
-    parser.add_argument("--learning_rate", "-l", type=float, default=.001, help="Learning rate")
-    parser.add_argument("--epochs", "-e", type=int, default=30, help="Number of epochs")
+    parser.add_argument("--batch_size", "-b", type=int, default=256, help="Batch size")
+    parser.add_argument("--MILESTONES", nargs='*', default=[25, 50, 75], help="Learning rate")
+    parser.add_argument("--learning_rate", "-l", type=float, default=0.1, help="Learning rate")
+    parser.add_argument("--epochs", "-e", type=int, default=100, help="Number of epochs")
+    parser.add_argument('--momentum', default=0.9, type=float, metavar='M', help='momentum')
+    parser.add_argument('--weight_decay', default=1e-4, type=float,  help='weight decay')
+
     parser.add_argument("--n_workers", type=int, default=4, help="Number of workers for dataloader")
+    parser.add_argument("--data_parallel", action='store_true', help='Run on all visible gpus')
 
     parser.add_argument("--shape_loss_weight", type=float, default=0., help="Shape loss weight")
-    parser.add_argument("--color_loss_weight", type=float, default=1., help="Color loss weight")
+    parser.add_argument("--color_loss_weight", type=float, default=0., help="Color loss weight")
     parser.add_argument("--distance_criterion", type=str, default='MSE', help="MSE or cosine")
 
     parser.add_argument("--img_dir", default='/home/work/Datasets/Tiny-ImageNet-original', help="Images dir path")
 
     parser.add_argument('--resume', default='', type=str,
                         help='path to latest checkpoint (default: none)')
-    parser.add_argument("--experiment", default='experiments/resnet50/shape=0_color=1_loss=MSE_optim=SGD_trainBN',
+    parser.add_argument("--experiment", default='experiments/resnet50/dummy',
                         help="Logs dir path")
 
     args = parser.parse_args()
@@ -80,15 +85,28 @@ class Trainer:
         self.use_shape = (self.args.shape_loss_weight > 0)
         self.use_color = (self.args.color_loss_weight > 0)
 
-        model = shapenet50(pretrained=args.pretrained, num_classes=200)
-        self.model = model.to(device)
-
         self.train_loader = get_train_loader(args, imagenetDataset, use_sobel=self.use_shape, use_color=self.use_color)
         self.val_loader = get_val_loader(args, imagenetDataset)
 
-        self.optimizer = optim.SGD(model.get_trainable_params(), lr=args.learning_rate, momentum=0.9)
-        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=int(args.epochs * .2))
-        # self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=self.args.epochs)
+        model = shapenet50(pretrained=args.pretrained, num_classes=200)
+        self.optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, momentum=args.momentum, weight_decay=args.weight_decay)
+        self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=args.MILESTONES, gamma=0.1)
+
+        if args.resume and os.path.isfile(args.resume):
+            print(f'Loading checkpoint {args.resume}')
+
+            checkpoint = torch.load(args.resume)
+            self.start_epoch = checkpoint['epoch']
+            self.best_acc = checkpoint['best_prec1']
+            model.load_state_dict(checkpoint['state_dict'])
+            self.optimizer.load_state_dict(checkpoint['optimizer'])
+
+            print(f'Loaded checkpoint {args.resume}, starting from epoch {self.start_epoch}')
+
+        if args.data_parallel:
+            model = torch.nn.DataParallel(model)
+
+        self.model = model.to(device)
 
         self.criterion = nn.CrossEntropyLoss()
 
@@ -99,58 +117,43 @@ class Trainer:
             self.shape_criterion = nn.CosineEmbeddingLoss()
             self.distance_loss_func = cosine_loss
 
-
-        if args.resume and os.path.isfile(args.resume):
-            print(f'Loading checkpoint {args.resume}')
-
-            checkpoint = torch.load(args.resume)
-            self.start_epoch = checkpoint['epoch']
-            self.best_acc = checkpoint['best_prec1']
-            self.model.load_state_dict(checkpoint['state_dict'])
-            self.optimizer.load_state_dict(checkpoint['optimizer'])
-
-            print(f'Loaded checkpoint {args.resume}, starting from epoch {self.start_epoch}')
-
         cudnn.benchmark = True
         self.writer = SummaryWriter(log_dir=str(args.log_dir))
 
     def _do_epoch(self, epoch_idx):
         self.model.train()
-        self.optimizer.zero_grad()
 
         for batch_idx, (images, targets, extra_data) in enumerate(self.train_loader):
+            self.optimizer.zero_grad()
             images, targets = images.to(self.device), targets.to(self.device)
 
             if self.use_shape:
                 sobels = extra_data['sobel'].to(self.device)
+                images = torch.cat([images, sobels], 0)
             if self.use_color:
                 colored = extra_data['color'].to(self.device)
-
+                images = torch.cat([images, colored], 0)
 
             outputs, img_activations = self.model(images)
             img_features = img_activations['representation']
 
+            outputs_split = torch.split(outputs, self.args.batch_size)
+            img_features_split = torch.split(img_features, self.args.batch_size)
+
             loss = 0.
 
-            cls_loss = self.criterion(outputs, targets)
+            cls_loss = self.criterion(outputs_split[0], targets)
             loss += cls_loss
 
             if self.use_shape:
-
-                sobel_outputs, sobel_activations = self.model(sobels, use_projection=False)
-                sobel_features = sobel_activations['representation']
-                shape_loss = self.distance_loss_func(self.shape_criterion, img_features, sobel_features, self.device)
-
+                shape_loss = self.distance_loss_func(self.shape_criterion, img_features_split[0], img_features_split[1], self.device)
                 self.writer.add_scalar('shape_loss_train', shape_loss.item(),
                                        epoch_idx * len(self.train_loader) + batch_idx)
-
                 loss += self.args.shape_loss_weight * shape_loss
 
             if self.use_color:
-                color_outputs, color_activations = self.model(colored, use_projection=False)
-                color_features = color_activations['representation']
-                color_loss = self.distance_loss_func(self.shape_criterion, img_features, color_features, self.device)
-
+                ftrs_indx = 2 if self.use_shape else 1
+                color_loss = self.distance_loss_func(self.shape_criterion, img_features_split[0], img_features_split[ftrs_indx], self.device)
                 self.writer.add_scalar('color_loss_train', color_loss.item(),
                                        epoch_idx * len(self.train_loader) + batch_idx)
 
@@ -164,13 +167,7 @@ class Trainer:
             self.writer.add_scalar('cls_loss_train', cls_loss.item(), epoch_idx * len(self.train_loader) + batch_idx)
 
             loss.backward()
-
-            if (batch_idx+1) % self.args.accumulate_batches == 0:
-                self.optimizer.step()
-                self.optimizer.zero_grad()
-
-        self.optimizer.step()
-        self.optimizer.zero_grad()
+            self.optimizer.step()
 
         self.model.eval()
 
