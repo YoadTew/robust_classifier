@@ -225,7 +225,7 @@ class Trainer:
                     'optimizer': self.optimizer.state_dict(),
                 }, is_best, checkpoint=self.args.checkpoint, filename=checkpoint_name)
 
-            self.writer.add_scalar('val_accuracy', class_acc, epoch_idx)
+        self.writer.add_scalar('val_accuracy', class_acc, epoch_idx)
 
     def do_test(self, loader):
         class_correct = 0

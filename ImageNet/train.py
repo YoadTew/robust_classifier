@@ -21,7 +21,7 @@ def get_args():
 
     parser.add_argument('--pretrained', action='store_true', help='Load pretrain model')
 
-    parser.add_argument("--batch_size", "-b", type=int, default=256, help="Batch size")
+    parser.add_argument("--batch_size", "-b", type=int, default=8, help="Batch size")
     parser.add_argument("--MILESTONES", nargs='*', default=[25, 50, 75], help="Learning rate")
     parser.add_argument("--learning_rate", "-l", type=float, default=0.1, help="Learning rate")
     parser.add_argument("--epochs", "-e", type=int, default=100, help="Number of epochs")
@@ -37,6 +37,7 @@ def get_args():
 
     parser.add_argument("--img_dir", default='/home/work/Datasets/Tiny-ImageNet-original', help="Images dir path")
 
+    parser.add_argument("--save_checkpoint_interval", type=int, default=10, help="Save checkpoints every i epochs")
     parser.add_argument('--resume', default='', type=str,
                         help='path to latest checkpoint (default: none)')
     parser.add_argument("--experiment", default='experiments/resnet50/dummy',
@@ -159,7 +160,7 @@ class Trainer:
 
                 loss += self.args.color_loss_weight * color_loss
 
-            if batch_idx % 30 == 1:
+            if batch_idx % 100 == 1:
                 print(f'epoch:  {epoch_idx}/{self.args.epochs}, batch: {batch_idx}/{len(self.train_loader)}, '
                       f'loss: {loss.item()}, cls_loss: {cls_loss.item()}, extra_losses: {loss.item() - cls_loss.item()}')
 
@@ -182,14 +183,21 @@ class Trainer:
                 self.best_acc = class_acc
                 is_best = True
 
-            checkpoint_name = f'checkpoint_{epoch_idx + 1}_acc_{round(class_acc, 3)}.pth.tar'
-            print(f'Saving {checkpoint_name} to dir {self.args.checkpoint}')
-            save_checkpoint({
-                'epoch': epoch_idx + 1,
-                'state_dict': self.model.state_dict(),
-                'best_prec1': self.best_acc,
-                'optimizer': self.optimizer.state_dict(),
-            }, is_best, checkpoint=self.args.checkpoint, filename=checkpoint_name)
+            if is_best or (epoch_idx + 1) % self.args.save_checkpoint_interval == 0:
+                checkpoint_name = f'checkpoint_{epoch_idx + 1}_acc_{round(class_acc, 3)}.pth.tar'
+                print(f'Saving {checkpoint_name} to dir {self.args.checkpoint}')
+
+                if self.args.data_parallel:
+                    state_dict = self.model.module.state_dict()
+                else:
+                    state_dict = self.model.state_dict()
+
+                save_checkpoint({
+                    'epoch': epoch_idx + 1,
+                    'state_dict': state_dict,
+                    'best_prec1': self.best_acc,
+                    'optimizer': self.optimizer.state_dict(),
+                }, is_best, checkpoint=self.args.checkpoint, filename=checkpoint_name)
 
             self.writer.add_scalar('val_accuracy', class_acc, epoch_idx)
 
