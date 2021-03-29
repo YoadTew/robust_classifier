@@ -37,7 +37,7 @@ def pil_to_colored(image):
     return image.resize([16, 16]).resize([224, 224])
 
 class imagenetDataset(data.Dataset):
-    def __init__(self, img_dir, transform=None, target_transform=None, loader=default_loader, use_sobel=False, use_color=False):
+    def __init__(self, img_dir, preprocess=None, transform=None, target_transform=None, loader=default_loader, use_sobel=False, use_color=False):
         self.images = []
         self.targets = []
         self.class_str_to_id = {}
@@ -45,6 +45,7 @@ class imagenetDataset(data.Dataset):
 
         self.loader = loader
         self.transform = transform
+        self.preprocess = preprocess
         self.target_transform = target_transform
         self.use_sobel = use_sobel
         self.use_color = use_color
@@ -65,6 +66,10 @@ class imagenetDataset(data.Dataset):
     def __getitem__(self, index):
         img_path = self.images[index]
         sample = self.loader(img_path)
+        extra_data = {}
+
+        if self.preprocess is not None:
+            sample = self.preprocess(sample)
 
         if self.use_color:
             colorized = pil_to_sobel(sample)
@@ -75,32 +80,18 @@ class imagenetDataset(data.Dataset):
         target = self.targets[index]
 
         if self.transform is not None:
-            # Need this for colorized transform consistency
-            seed = np.random.randint(2147483647)
-
-            random.seed(seed)  # apply this seed to img tranfsorms
-            torch.manual_seed(seed)  # needed for torchvision 0.7
             sample = self.transform(sample)
 
             if self.use_sobel:
-                random.seed(seed)  # apply this seed to img tranfsorms
-                torch.manual_seed(seed)  # needed for torchvision 0.7
                 sobel = self.transform(sobel)
+                extra_data['sobel'] = sobel
 
             if self.use_color:
-                random.seed(seed)  # apply this seed to img tranfsorms
-                torch.manual_seed(seed)  # needed for torchvision 0.7
                 colorized = self.transform(colorized)
+                extra_data['color'] = colorized
 
         if self.target_transform is not None:
             target = self.target_transform(target)
-
-        extra_data = {}
-
-        if self.use_sobel:
-            extra_data['sobel'] = sobel
-        if self.use_color:
-            extra_data['color'] = colorized
 
         return sample, target, extra_data
 

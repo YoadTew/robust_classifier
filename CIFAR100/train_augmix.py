@@ -198,6 +198,7 @@ class Trainer:
                 if 'bias' in name:
                     self.writer.add_scalar('LastLayerGradients/grad_norm2_bias', para.grad.norm(), n_iter)
 
+        self.model.eval()
         with torch.no_grad():
             total = len(self.val_loader.dataset)
             class_correct = self.do_test(self.val_loader)

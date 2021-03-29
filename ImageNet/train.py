@@ -168,11 +168,19 @@ class Trainer:
                 print(f'epoch:  {epoch_idx}/{self.args.epochs}, batch: {batch_idx}/{len(self.train_loader)}, '
                       f'loss: {loss.item()}, cls_loss: {cls_loss.item()}, extra_losses: {loss.item() - cls_loss.item()}')
 
-            self.writer.add_scalar('loss_train', loss.item(), epoch_idx * len(self.train_loader) + batch_idx)
-            self.writer.add_scalar('cls_loss_train', cls_loss.item(), epoch_idx * len(self.train_loader) + batch_idx)
+            n_iter = epoch_idx * len(self.train_loader) + batch_idx
+            self.writer.add_scalar('loss_train', loss.item(), n_iter)
+            self.writer.add_scalar('cls_loss_train', cls_loss.item(), n_iter)
 
             loss.backward()
             self.optimizer.step()
+
+            last_layer = list(self.model.children())[-1]
+            for name, para in last_layer.named_parameters():
+                if 'weight' in name:
+                    self.writer.add_scalar('LastLayerGradients/grad_norm2_weights', para.grad.norm(), n_iter)
+                if 'bias' in name:
+                    self.writer.add_scalar('LastLayerGradients/grad_norm2_bias', para.grad.norm(), n_iter)
 
         self.model.eval()
 
