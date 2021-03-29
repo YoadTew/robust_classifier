@@ -21,7 +21,7 @@ def get_args():
 
     parser.add_argument('--pretrained', action='store_true', help='Load pretrain model')
 
-    parser.add_argument("--batch_size", "-b", type=int, default=8, help="Batch size")
+    parser.add_argument("--batch_size", "-b", type=int, default=256, help="Batch size")
     parser.add_argument("--MILESTONES", nargs='*', default=[25, 50, 75], help="Learning rate")
     parser.add_argument("--learning_rate", "-l", type=float, default=0.1, help="Learning rate")
     parser.add_argument("--epochs", "-e", type=int, default=100, help="Number of epochs")
@@ -130,31 +130,35 @@ class Trainer:
 
             if self.use_shape:
                 sobels = extra_data['sobel'].to(self.device)
-                images = torch.cat([images, sobels], 0)
             if self.use_color:
                 colored = extra_data['color'].to(self.device)
-                images = torch.cat([images, colored], 0)
 
             outputs, img_activations = self.model(images)
             img_features = img_activations['representation']
 
-            outputs_split = torch.split(outputs, self.args.batch_size)
-            img_features_split = torch.split(img_features, self.args.batch_size)
-
             loss = 0.
 
-            cls_loss = self.criterion(outputs_split[0], targets)
+            cls_loss = self.criterion(outputs, targets)
             loss += cls_loss
 
             if self.use_shape:
-                shape_loss = self.distance_loss_func(self.shape_criterion, img_features_split[0], img_features_split[1], self.device)
+                with torch.no_grad():
+                    _, img_activations = self.model(sobels)
+                    sobel_ftrs = img_activations['representation'].detach()
+                self.model.train()
+
+                shape_loss = self.distance_loss_func(self.shape_criterion, img_features, sobel_ftrs, self.device)
                 self.writer.add_scalar('shape_loss_train', shape_loss.item(),
                                        epoch_idx * len(self.train_loader) + batch_idx)
                 loss += self.args.shape_loss_weight * shape_loss
 
             if self.use_color:
-                ftrs_indx = 2 if self.use_shape else 1
-                color_loss = self.distance_loss_func(self.shape_criterion, img_features_split[0], img_features_split[ftrs_indx], self.device)
+                with torch.no_grad():
+                    _, img_activations = self.model(colored)
+                    color_ftrs = img_activations['representation'].detach()
+                self.model.train()
+
+                color_loss = self.distance_loss_func(self.shape_criterion, img_features, color_ftrs, self.device)
                 self.writer.add_scalar('color_loss_train', color_loss.item(),
                                        epoch_idx * len(self.train_loader) + batch_idx)
 
