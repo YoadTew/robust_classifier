@@ -3,6 +3,7 @@ from torch import Tensor
 import torch.nn as nn
 from torchvision.models.utils import load_state_dict_from_url
 from typing import Type, Any, Callable, Union, List, Optional
+from models.HyperBatchNorm import HyperBatchNorm
 
 
 __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
@@ -188,7 +189,7 @@ class ResNet(nn.Module):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)) and m.affine:
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
 

@@ -14,6 +14,7 @@ import json
 from models.resnet import resnet50
 from data.data_manager import get_val_loader, get_train_loader
 from data.imagenetDataset import imagenetDataset
+from models.HyperBatchNorm import HyperBatchNorm
 
 def get_args():
     parser = argparse.ArgumentParser(description="training script",
@@ -89,7 +90,9 @@ class Trainer:
         self.train_loader = get_train_loader(args, imagenetDataset, use_sobel=self.use_shape, use_color=self.use_color)
         self.val_loader = get_val_loader(args, imagenetDataset)
 
-        model = resnet50(pretrained=args.pretrained, num_classes=200)
+        model = resnet50(pretrained=args.pretrained, num_classes=200)#, norm_layer=HyperBatchNorm)
+        print(f'Parameter count: {sum(p.numel() for p in model.parameters() if p.requires_grad)}')
+
         self.optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, momentum=args.momentum, weight_decay=args.weight_decay)
         self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=args.MILESTONES, gamma=0.1)
 
@@ -145,7 +148,6 @@ class Trainer:
                 with torch.no_grad():
                     _, img_activations = self.model(sobels)
                     sobel_ftrs = img_activations['representation'].detach()
-                self.model.train()
 
                 shape_loss = self.distance_loss_func(self.shape_criterion, img_features, sobel_ftrs, self.device)
                 self.writer.add_scalar('shape_loss_train', shape_loss.item(),
@@ -156,7 +158,6 @@ class Trainer:
                 with torch.no_grad():
                     _, img_activations = self.model(colored)
                     color_ftrs = img_activations['representation'].detach()
-                self.model.train()
 
                 color_loss = self.distance_loss_func(self.shape_criterion, img_features, color_ftrs, self.device)
                 self.writer.add_scalar('color_loss_train', color_loss.item(),
