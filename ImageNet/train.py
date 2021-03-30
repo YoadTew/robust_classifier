@@ -90,8 +90,9 @@ class Trainer:
         self.train_loader = get_train_loader(args, imagenetDataset, use_sobel=self.use_shape, use_color=self.use_color)
         self.val_loader = get_val_loader(args, imagenetDataset)
 
-        model = resnet50(pretrained=args.pretrained, num_classes=200)#, norm_layer=HyperBatchNorm)
-        print(f'Parameter count: {sum(p.numel() for p in model.parameters() if p.requires_grad)}')
+        model = resnet50(pretrained=args.pretrained, num_classes=200, norm_layer=HyperBatchNorm)
+        param_count = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        print(f'Parameter count: {param_count:,}')
 
         self.optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, momentum=args.momentum, weight_decay=args.weight_decay)
         self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=args.MILESTONES, gamma=0.1)
@@ -176,7 +177,12 @@ class Trainer:
             loss.backward()
             self.optimizer.step()
 
-            last_layer = list(self.model.children())[-1]
+
+            if not self.args.data_parallel:
+                last_layer = list(self.model.children())[-1]
+            else:
+                last_layer = list(self.model.module.children())[-1]
+
             for name, para in last_layer.named_parameters():
                 if 'weight' in name:
                     self.writer.add_scalar('LastLayerGradients/grad_norm2_weights', para.grad.norm(), n_iter)
