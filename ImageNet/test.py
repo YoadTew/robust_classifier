@@ -8,7 +8,7 @@ import os
 import sys
 
 from models.resnet import resnet50
-from ImageNet.data.data_manager import get_test_loaders
+from data.data_manager import get_test_loaders
 
 def get_args():
     parser = argparse.ArgumentParser(description="testing script",
