@@ -35,6 +35,8 @@ def get_args():
     parser.add_argument("--shape_loss_weight", type=float, default=0., help="Shape loss weight")
     parser.add_argument("--color_loss_weight", type=float, default=0., help="Color loss weight")
     parser.add_argument("--distance_criterion", type=str, default='MSE', help="MSE or cosine")
+    parser.add_argument("--norm_layer", type=str, choices=[None, 'HyperBatchNorm'], help="MSE or cosine")
+
 
     parser.add_argument("--img_dir", default='/home/work/Datasets/Tiny-ImageNet-original', help="Images dir path")
 
@@ -48,6 +50,9 @@ def get_args():
 
     args.checkpoint = f'{args.experiment}/checkpoints'
     args.log_dir = f'{args.experiment}/logs'
+
+    if args.norm_layer == 'HyperBatchNorm':
+        args.norm_layer = HyperBatchNorm
 
     return args
 
@@ -90,7 +95,7 @@ class Trainer:
         self.train_loader = get_train_loader(args, imagenetDataset, use_sobel=self.use_shape, use_color=self.use_color)
         self.val_loader = get_val_loader(args, imagenetDataset)
 
-        model = resnet50(pretrained=args.pretrained, num_classes=200, norm_layer=HyperBatchNorm)
+        model = resnet50(pretrained=args.pretrained, num_classes=200, norm_layer=args.norm_layer)
         param_count = sum(p.numel() for p in model.parameters() if p.requires_grad)
         print(f'Parameter count: {param_count:,}')
 
