@@ -30,6 +30,7 @@ def pil_to_sobel(image):
     sobel = (sobel / sobel.max() * 255)
 
     pil_sobel = Image.fromarray(sobel).convert("RGB")
+    pil_sobel = Image.blend(pil_sobel, image, 0.15)
 
     return pil_sobel
 
@@ -75,7 +76,6 @@ class imagenetDataset(data.Dataset):
             colorized = pil_to_sobel(sample)
         if self.use_sobel:
             sobel = pil_to_sobel(sample)
-            sobel = Image.blend(sobel, sample, 0.15)
 
         target = self.targets[index]
 

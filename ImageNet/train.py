@@ -23,7 +23,7 @@ def get_args():
     parser.add_argument('--pretrained', action='store_true', help='Load pretrain model')
 
     parser.add_argument("--batch_size", "-b", type=int, default=256, help="Batch size")
-    parser.add_argument("--MILESTONES", nargs='*', default=[25, 50, 75], help="Learning rate")
+    parser.add_argument("--MILESTONES", nargs='*', type=int, default=[25, 50, 75], help="Learning rate")
     parser.add_argument("--learning_rate", "-l", type=float, default=0.1, help="Learning rate")
     parser.add_argument("--epochs", "-e", type=int, default=100, help="Number of epochs")
     parser.add_argument('--momentum', default=0.9, type=float, metavar='M', help='momentum')
