@@ -35,7 +35,8 @@ def get_args():
     parser.add_argument("--shape_loss_weight", type=float, default=0., help="Shape loss weight")
     parser.add_argument("--color_loss_weight", type=float, default=0., help="Color loss weight")
     parser.add_argument("--distance_criterion", type=str, default='MSE', help="MSE or cosine")
-    parser.add_argument("--norm_layer", type=str, choices=[None, 'HyperBatchNorm'], help="MSE or cosine")
+    parser.add_argument("--norm_layer", type=str, choices=[None, 'HyperBatchNorm'], help="Use a different norm layer")
+    parser.add_argument("--train_only_bn", action='store_true', help="Train only batchNorm layers")
 
 
     parser.add_argument("--img_dir", default='/home/work/Datasets/Tiny-ImageNet-original', help="Images dir path")
@@ -99,7 +100,12 @@ class Trainer:
         param_count = sum(p.numel() for p in model.parameters() if p.requires_grad)
         print(f'Parameter count: {param_count:,}')
 
-        self.optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, momentum=args.momentum, weight_decay=args.weight_decay)
+        if args.train_only_bn:
+            trainable_params = model.get_bn_params_freeze_rest()
+        else:
+            trainable_params = model.parameters()
+
+        self.optimizer = optim.SGD(trainable_params, lr=args.learning_rate, momentum=args.momentum, weight_decay=args.weight_decay)
         self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=args.MILESTONES, gamma=0.1)
 
         if args.resume and os.path.isfile(args.resume):
