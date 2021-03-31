@@ -11,7 +11,7 @@ def get_train_loader(args, dataset_class, use_sobel=False, use_color=False):
                                      std=[0.229, 0.224, 0.225])
 
     preprocess = transforms.Compose([
-        transforms.Resize(256),
+        transforms.Resize((256, 256)),
         transforms.RandomCrop(224),
         transforms.RandomHorizontalFlip()
     ])
