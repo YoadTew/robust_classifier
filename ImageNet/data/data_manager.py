@@ -40,7 +40,7 @@ def get_val_loader(args, dataset_class):
 
     dataset = dataset_class(f'{args.img_dir}/val', transform=img_transform)
 
-    train_dataloader = data.DataLoader(dataset, num_workers=args.n_workers, batch_size=args.batch_size, shuffle=True, drop_last=True)
+    train_dataloader = data.DataLoader(dataset, num_workers=args.n_workers, batch_size=args.batch_size, shuffle=True)
 
     return train_dataloader
 
@@ -49,22 +49,20 @@ def get_test_loader(args):
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
     img_transform = transforms.Compose([
-        transforms.Resize(256),
-        transforms.RandomCrop(224),
         transforms.ToTensor(),
         normalize,
     ])
 
     dataset = imagenetCorruptedDataset(f'{args.img_dir}', transform=img_transform)
 
-    train_dataloader = data.DataLoader(dataset, num_workers=args.n_workers, batch_size=args.batch_size, shuffle=True, drop_last=True)
+    train_dataloader = data.DataLoader(dataset, num_workers=args.n_workers, batch_size=args.batch_size)
 
     return train_dataloader
 
 def get_test_loaders(args):
 
     img_dir = args.img_dir
-    parent_augs = [x.split('/')[-1] for x in glob.glob(f'{args.img_dir}/*') if os.path.isdir(x)]
+    parent_augs = ['blur', 'weather', 'noise', 'digital']
 
     for parent_aug in parent_augs:
         aug_childs = [x.split('/')[-1] for x in glob.glob(f'{img_dir}/{parent_aug}/*')]

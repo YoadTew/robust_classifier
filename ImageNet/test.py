@@ -7,17 +7,16 @@ import random
 import os
 import sys
 
-from models.resnet import resnet18
-from models.ShapeNet import shapenet18, shapenet50
+from models.resnet import resnet50
 from ImageNet.data.data_manager import get_test_loaders
 
 def get_args():
     parser = argparse.ArgumentParser(description="testing script",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--batch_size", "-b", type=int, default=32, help="Batch size")
-    # parser.add_argument("--image_size", type=int, default=222, help="Image size")
     parser.add_argument('--pretrained', action='store_true', help='Load pretrain model')
     parser.add_argument("--n_workers", type=int, default=4, help="Number of workers for dataloader")
+    parser.add_argument("--data_parallel", action='store_true', help='Run on all visible gpus')
 
     parser.add_argument("--img_dir", default='/home/work/Datasets/ImageNet-C', help="Images dir path")
 
@@ -31,8 +30,7 @@ class Tester:
         self.args = args
         self.device = device
 
-        model = shapenet50(pretrained=args.pretrained, num_classes=200)
-        self.model = model.to(device)
+        model = resnet50(pretrained=args.pretrained, num_classes=200)
 
         if args.resume and os.path.isfile(args.resume):
             print(f'Loading checkpoint {args.resume}')
@@ -40,9 +38,14 @@ class Tester:
             checkpoint = torch.load(args.resume)
             self.start_epoch = checkpoint['epoch']
             self.best_acc = checkpoint['best_prec1']
-            self.model.load_state_dict(checkpoint['state_dict'])
+            model.load_state_dict(checkpoint['state_dict'])
 
             print(f'Loaded checkpoint {args.resume}, starting from epoch {self.start_epoch}')
+
+        if args.data_parallel:
+            model = torch.nn.DataParallel(model)
+
+        self.model = model.to(device)
 
         cudnn.benchmark = True
 
