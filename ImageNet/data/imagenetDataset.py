@@ -73,7 +73,7 @@ class imagenetDataset(data.Dataset):
             sample = self.preprocess(sample)
 
         if self.use_color:
-            colorized = pil_to_sobel(sample)
+            colorized = pil_to_colored(sample)
         if self.use_sobel:
             sobel = pil_to_sobel(sample)
 

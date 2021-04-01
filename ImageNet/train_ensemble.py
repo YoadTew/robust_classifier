@@ -11,8 +11,7 @@ import shutil
 import sys
 import json
 
-from models.resnet import resnet18
-from models.ShapeNet import shapenet50, shapenet18
+from models.resnet import resnet50
 from models.ensemble_network import EnsembleNet
 from data.data_manager import get_val_loader, get_train_loader
 from data.imagenetDataset import imagenetDataset
@@ -24,21 +23,22 @@ def get_args():
     parser.add_argument("--accumulate_batches", type=int, default=4, help="Number of batch to accumulate")
     parser.add_argument('--pretrained', action='store_true', help='Load pretrain model')
 
-    parser.add_argument("--learning_rate", "-l", type=float, default=.001, help="Learning rate")
+    parser.add_argument("--learning_rate", "-l", type=float, default=0.001, help="Learning rate")
     parser.add_argument("--epochs", "-e", type=int, default=30, help="Number of epochs")
     parser.add_argument("--n_workers", type=int, default=4, help="Number of workers for dataloader")
+    parser.add_argument("--data_parallel", action='store_true', help='Run on all visible gpus')
 
     parser.add_argument("--img_dir", default='/home/work/Datasets/Tiny-ImageNet-original', help="Images dir path")
 
     parser.add_argument('--use_weight_net', action='store_true', help='Load pretrain model')
-    parser.add_argument('--resume_edge', default='experiments/resnet50/shape=1_color=0_loss=MSE_optim=SGD_interpolate_0.15_trainBN/checkpoints/model_best.pth.tar', type=str,
+    parser.add_argument('--resume_edge', default='experiments/ImageNetSubset/resnet50/shape=1_color=0_pretrained_lr=0.005_trainBN/checkpoints/model_best.pth.tar', type=str,
                         help='path to edge model checkpoint (default: none)')
-    parser.add_argument('--resume_color', default='experiments/resnet50/shape=0_color=1_loss=MSE_optim=SGD_trainBN/checkpoints/model_best.pth.tar', type=str,
+    parser.add_argument('--resume_color', default='experiments/ImageNetSubset/resnet50/shape=0_color=1_pretrained_lr=0.005_trainBN/checkpoints/model_best.pth.tar', type=str,
                         help='path to color model checkpoint (default: none)')
     parser.add_argument('--resume_ensemble', default='', type=str,
                         help='path to color model checkpoint (default: none)')
 
-    parser.add_argument("--experiment", default='experiments/ensemble50/optim=SGD_shape_trainBN_color_trainBN',
+    parser.add_argument("--experiment", default='experiments/ImageNetSubset/ensemble50/optim=SGD_shape_trainBN_color_trainBN',
                         help="Logs dir path")
 
     args = parser.parse_args()
@@ -79,16 +79,18 @@ class Trainer:
         self.val_loader = get_val_loader(args, imagenetDataset)
 
         # Loads shape model
-        edge_model = shapenet50(pretrained=args.pretrained, num_classes=200).to(device)
+        edge_model = resnet50(pretrained=args.pretrained, num_classes=200).to(device)
         edge_checkpoint = torch.load(args.resume_edge)
         edge_model.load_state_dict(edge_checkpoint['state_dict'])
 
         # Loads color model
-        color_model = shapenet50(pretrained=args.pretrained, num_classes=200).to(device)
+        color_model = resnet50(pretrained=args.pretrained, num_classes=200).to(device)
         color_checkpoint = torch.load(args.resume_color)
         color_model.load_state_dict(color_checkpoint['state_dict'])
 
-        self.ensemble_model = EnsembleNet(edge_model, color_model, n_classes=200, use_weight_net=args.use_weight_net, device=device).to(device)
+        ensemble_model = EnsembleNet(edge_model, color_model, n_classes=200, use_weight_net=args.use_weight_net, device=device)
+        self.optimizer = optim.SGD(ensemble_model.get_trainable_params(), lr=args.learning_rate, momentum=0.9)
+        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=5)
 
         if args.resume_ensemble and os.path.isfile(args.resume_ensemble):
             print(f'Loading checkpoint {args.resume_ensemble}')
@@ -96,14 +98,15 @@ class Trainer:
             checkpoint = torch.load(args.resume_ensemble)
             self.start_epoch = checkpoint['epoch']
             self.best_acc = checkpoint['best_prec1']
-            self.ensemble_model.load_state_dict(checkpoint['state_dict'])
+            ensemble_model.load_state_dict(checkpoint['state_dict'])
             self.optimizer.load_state_dict(checkpoint['optimizer'])
 
             print(f'Loaded checkpoint {args.resume_ensemble}, starting from epoch {self.start_epoch}')
 
-        # self.optimizer = torch.optim.AdamW(self.ensemble_model.get_trainable_params(), lr=args.learning_rate)
-        self.optimizer = optim.SGD(self.ensemble_model.get_trainable_params(), lr=args.learning_rate, momentum=0.9)
-        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=5)
+        if args.data_parallel:
+            ensemble_model = torch.nn.DataParallel(ensemble_model)
+
+        self.ensemble_model = ensemble_model.to(device)
 
         self.criterion = nn.CrossEntropyLoss()
         cudnn.benchmark = True
@@ -145,9 +148,15 @@ class Trainer:
 
             checkpoint_name = f'checkpoint_{epoch_idx + 1}_acc_{round(class_acc, 3)}.pth.tar'
             print(f'Saving {checkpoint_name} to dir {self.args.checkpoint}')
+
+            if self.args.data_parallel:
+                state_dict = self.ensemble_model.module.state_dict()
+            else:
+                state_dict = self.ensemble_model.state_dict()
+
             save_checkpoint({
                 'epoch': epoch_idx + 1,
-                'state_dict': self.ensemble_model.state_dict(),
+                'state_dict': state_dict,
                 'best_prec1': self.best_acc,
                 'optimizer': self.optimizer.state_dict(),
             }, is_best, checkpoint=self.args.checkpoint, filename=checkpoint_name)
