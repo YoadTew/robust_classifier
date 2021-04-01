@@ -26,6 +26,8 @@ def get_args():
 
     parser.add_argument("--learning_rate", "-l", type=float, default=0.001, help="Learning rate")
     parser.add_argument("--epochs", "-e", type=int, default=30, help="Number of epochs")
+    parser.add_argument("--MILESTONES", nargs='*', type=int, default=[25, 50, 75], help="Learning rate")
+    parser.add_argument('--weight_decay', default=1e-4, type=float, help='weight decay')
     parser.add_argument("--n_workers", type=int, default=4, help="Number of workers for dataloader")
     parser.add_argument("--data_parallel", action='store_true', help='Run on all visible gpus')
 
@@ -89,8 +91,8 @@ class Trainer:
         ensemble_model = resnet50(num_classes=200, norm_layer=EnsembleBatchNorm)
         ensemble_model.load_batchEnsemble_state_dict(edge_model, color_model)
 
-        self.optimizer = optim.SGD(ensemble_model.parameters(), lr=args.learning_rate, momentum=0.9)
-        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=5)
+        self.optimizer = optim.SGD(ensemble_model.parameters(), lr=args.learning_rate, momentum=0.9, weight_decay=args.weight_decay)
+        self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=args.MILESTONES, gamma=0.1)
 
         if args.resume_ensemble and os.path.isfile(args.resume_ensemble):
             print(f'Loading checkpoint {args.resume_ensemble}')
