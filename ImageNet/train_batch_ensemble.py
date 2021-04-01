@@ -120,7 +120,7 @@ class Trainer:
 
             self.optimizer.zero_grad()
 
-            outputs = self.ensemble_model(images)
+            outputs, _ = self.ensemble_model(images)
 
             loss = self.criterion(outputs, targets)
 
@@ -170,7 +170,7 @@ class Trainer:
             inputs, targets = inputs.to(self.device), targets.to(self.device)
 
             # forward
-            outputs = self.ensemble_model(inputs)
+            outputs, _ = self.ensemble_model(inputs)
 
             _, cls_pred = outputs.max(dim=1)
 

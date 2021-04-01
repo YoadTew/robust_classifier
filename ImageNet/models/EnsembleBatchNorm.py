@@ -9,16 +9,13 @@ class EnsembleBatchNorm(nn.Module):
         self.bn_shape = nn.BatchNorm2d(planes)
         self.bn_color = nn.BatchNorm2d(planes)
 
-        self.convex_weights = nn.Parameter(torch.ones(1, 2))
+        self.convex_weights = nn.Parameter(torch.ones(2))
 
     def forward(self, x):
-
-        shape = x.size()
 
         x_1 = self.bn_shape(x)
         x_2 = self.bn_color(x)
 
-        x = torch.matmul(self.convex_weights, torch.stack([x_1.view(-1), x_2.view(-1)]))
-        x = x.view(shape)
+        x = self.convex_weights[0] * x_1 + self.convex_weights[1] * x_2
 
         return x
