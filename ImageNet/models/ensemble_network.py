@@ -1,15 +1,12 @@
 import torch
 import torch.nn as nn
 
-from ImageNet.models.resnet import resnet18
-
 class EnsembleNet(nn.Module):
 
-    def __init__(self, edge_model, color_model, use_weight_net=True, n_classes=200, device='cuda'):
+    def __init__(self, edge_model, color_model, n_classes=200, device='cuda'):
         super(EnsembleNet, self).__init__()
 
         self.n_classifiers = 2
-        self.use_weight_net = use_weight_net
 
         self.edge_model = edge_model
         self.color_model = color_model

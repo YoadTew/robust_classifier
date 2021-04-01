@@ -39,7 +39,7 @@ class Tester:
         # Loads color model
         color_model = resnet50(pretrained=args.pretrained, num_classes=200)
 
-        ensemble_model = EnsembleNet(edge_model, color_model, n_classes=200, use_weight_net=False, device=device)
+        ensemble_model = EnsembleNet(edge_model, color_model, n_classes=200, device=device)
 
         if args.resume_ensemble and os.path.isfile(args.resume_ensemble):
             print(f'Loading checkpoint {args.resume_ensemble}')

@@ -30,7 +30,6 @@ def get_args():
 
     parser.add_argument("--img_dir", default='/home/work/Datasets/Tiny-ImageNet-original', help="Images dir path")
 
-    parser.add_argument('--use_weight_net', action='store_true', help='Load pretrain model')
     parser.add_argument('--resume_edge', default='experiments/ImageNetSubset/resnet50/shape=1_color=0_pretrained_lr=0.005_trainBN/checkpoints/model_best.pth.tar', type=str,
                         help='path to edge model checkpoint (default: none)')
     parser.add_argument('--resume_color', default='experiments/ImageNetSubset/resnet50/shape=0_color=1_pretrained_lr=0.005_trainBN/checkpoints/model_best.pth.tar', type=str,
@@ -88,7 +87,7 @@ class Trainer:
         color_checkpoint = torch.load(args.resume_color)
         color_model.load_state_dict(color_checkpoint['state_dict'])
 
-        ensemble_model = EnsembleNet(edge_model, color_model, n_classes=200, use_weight_net=args.use_weight_net, device=device)
+        ensemble_model = EnsembleNet(edge_model, color_model, n_classes=200, device=device)
         self.optimizer = optim.SGD(ensemble_model.get_trainable_params(), lr=args.learning_rate, momentum=0.9)
         self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=5)
 
