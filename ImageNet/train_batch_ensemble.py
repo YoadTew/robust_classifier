@@ -15,6 +15,7 @@ from models.resnet import resnet50
 from models.ensemble_network import EnsembleNet
 from data.data_manager import get_val_loader, get_train_loader
 from data.imagenetDataset import imagenetDataset
+from models.EnsembleBatchNorm import EnsembleBatchNorm
 
 def get_args():
     parser = argparse.ArgumentParser(description="training script",
@@ -37,7 +38,7 @@ def get_args():
     parser.add_argument('--resume_ensemble', default='', type=str,
                         help='path to color model checkpoint (default: none)')
 
-    parser.add_argument("--experiment", default='experiments/ImageNetSubset/ensemble50/optim=SGD_shape_trainBN_color_trainBN',
+    parser.add_argument("--experiment", default='experiments/ImageNetSubset/ensemble50_batch/optim=SGD_shape_trainBN_color_trainBN',
                         help="Logs dir path")
 
     args = parser.parse_args()
@@ -75,18 +76,20 @@ class Trainer:
         self.train_loader = get_train_loader(args, imagenetDataset)
         self.val_loader = get_val_loader(args, imagenetDataset)
 
-        # Loads shape model
-        edge_model = resnet50(pretrained=args.pretrained, num_classes=200).to(device)
+        edge_model = resnet50(num_classes=200)
         edge_checkpoint = torch.load(args.resume_edge)
-        edge_model.load_state_dict(edge_checkpoint['state_dict'])
+        edge_state_dict = edge_checkpoint['state_dict']
+        edge_model.load_state_dict(edge_state_dict)
 
-        # Loads color model
-        color_model = resnet50(pretrained=args.pretrained, num_classes=200).to(device)
+        color_model = resnet50(num_classes=200)
         color_checkpoint = torch.load(args.resume_color)
-        color_model.load_state_dict(color_checkpoint['state_dict'])
+        color_state_dict = color_checkpoint['state_dict']
+        color_model.load_state_dict(color_state_dict)
 
-        ensemble_model = EnsembleNet(edge_model, color_model, n_classes=200, device=device)
-        self.optimizer = optim.SGD(ensemble_model.get_trainable_params(), lr=args.learning_rate, momentum=0.9)
+        ensemble_model = resnet50(num_classes=200, norm_layer=EnsembleBatchNorm)
+        ensemble_model.load_batchEnsemble_state_dict(edge_model, color_model)
+
+        self.optimizer = optim.SGD(ensemble_model.parameters(), lr=args.learning_rate, momentum=0.9)
         self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=5)
 
         if args.resume_ensemble and os.path.isfile(args.resume_ensemble):
@@ -202,7 +205,6 @@ def main():
     best_val_acc = trainer.do_training()
 
 if __name__ == "__main__":
-    # torchfunc.cuda.reset()
     torch.cuda.empty_cache()
     torch.backends.cudnn.benchmark = True
     main()

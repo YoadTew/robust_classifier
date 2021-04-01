@@ -270,6 +270,16 @@ class ResNet(nn.Module):
 
         return filter(lambda p: p.requires_grad, self.parameters())
 
+    def load_batchEnsemble_state_dict(self, shape_model, color_model):
+        shape_modules_dict = dict(shape_model.named_modules())
+        color_modules_dict = dict(color_model.named_modules())
+
+        self.load_state_dict(shape_model.state_dict(), strict=False)
+
+        for name, module in self.named_modules():
+            if isinstance(module, self._norm_layer):
+                module.bn_shape.load_state_dict(shape_modules_dict[name].state_dict())
+                module.bn_color.load_state_dict(color_modules_dict[name].state_dict())
 
 def _resnet(
     arch: str,

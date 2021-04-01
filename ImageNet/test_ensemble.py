@@ -2,6 +2,7 @@ import argparse
 
 import torch
 import torch.backends.cudnn as cudnn
+import torch.nn.functional as F
 import numpy as np
 import random
 import os
