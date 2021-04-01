@@ -7,24 +7,22 @@ import random
 import os
 import sys
 
-from models.resnet import resnet18
-from models.ShapeNet import shapenet18, shapenet50
+from models.resnet import resnet50
 from models.ensemble_network import EnsembleNet
 from data.data_manager import get_test_loaders
 
 def get_args():
     parser = argparse.ArgumentParser(description="testing script",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("--batch_size", "-b", type=int, default=32, help="Batch size")
-    # parser.add_argument("--image_size", type=int, default=222, help="Image size")
+    parser.add_argument("--batch_size", "-b", type=int, default=256, help="Batch size")
     parser.add_argument('--pretrained', action='store_true', help='Load pretrain model')
     parser.add_argument("--n_workers", type=int, default=4, help="Number of workers for dataloader")
+    parser.add_argument("--data_parallel", action='store_true', help='Run on all visible gpus')
 
     parser.add_argument("--img_dir", default='/home/work/Datasets/ImageNet-C', help="Images dir path")
 
-    parser.add_argument('--use_weight_net', action='store_true', help='Use weight net')
     parser.add_argument('--resume_ensemble',
-                        default='experiments/ensemble50/optim=SGD_shape_trainBN_color_trainBN/checkpoints/model_best.pth.tar',
+                        default='experiments/ImageNetSubset/ensemble50/optim=SGD_shape_trainBN_color_trainBN/checkpoints/model_best.pth.tar',
                         type=str,
                         help='path to color model checkpoint (default: none)')
 
@@ -36,12 +34,12 @@ class Tester:
         self.device = device
 
         # Loads shape model
-        edge_model = shapenet50(pretrained=args.pretrained, num_classes=200).to(device)
+        edge_model = resnet50(pretrained=args.pretrained, num_classes=200)
 
         # Loads color model
-        color_model = shapenet50(pretrained=args.pretrained, num_classes=200).to(device)
+        color_model = resnet50(pretrained=args.pretrained, num_classes=200)
 
-        self.ensemble_model = EnsembleNet(edge_model, color_model, n_classes=200, use_weight_net=False, device=device).to(device)
+        ensemble_model = EnsembleNet(edge_model, color_model, n_classes=200, use_weight_net=False, device=device)
 
         if args.resume_ensemble and os.path.isfile(args.resume_ensemble):
             print(f'Loading checkpoint {args.resume_ensemble}')
@@ -49,10 +47,14 @@ class Tester:
             checkpoint = torch.load(args.resume_ensemble)
             self.start_epoch = checkpoint['epoch']
             self.best_acc = checkpoint['best_prec1']
-            self.ensemble_model.load_state_dict(checkpoint['state_dict'])
+            ensemble_model.load_state_dict(checkpoint['state_dict'])
 
             print(f'Loaded checkpoint {args.resume_ensemble}, starting from epoch {self.start_epoch}')
 
+        if args.data_parallel:
+            ensemble_model = torch.nn.DataParallel(ensemble_model)
+
+        self.ensemble_model = ensemble_model.to(device)
         cudnn.benchmark = True
 
     def do_testing(self):
@@ -72,7 +74,6 @@ class Tester:
                 print(f'Mean corruption: {aug_name}, accuracy: {mean_acc}, error: {1 - mean_acc}')
 
         print('mCE:', sum(curruption_errors) / len(curruption_errors))
-        # accuracy = do_test(self.test_loader)
 
     def do_test(self, loader):
         self.ensemble_model.eval()
