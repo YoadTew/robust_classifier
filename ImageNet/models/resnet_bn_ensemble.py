@@ -257,18 +257,24 @@ class ResNet(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         return self._forward_impl(x)
 
-    def get_bn_params_freeze_rest(self):
-        def freeze_all_but_bn(m):
-            if not isinstance(m, torch.nn.modules.batchnorm._BatchNorm):
-                if hasattr(m, 'weight') and m.weight is not None:
-                    m.weight.requires_grad_(False)
-                if hasattr(m, 'bias') and m.bias is not None:
-                    m.bias.requires_grad_(False)
+    def get_trainable_params(self):
+        for param in self.parameters():
+            param.requires_grad_(False)
 
-        self.apply(freeze_all_but_bn)
         self.fc.requires_grad_(True)
 
         return filter(lambda p: p.requires_grad, self.parameters())
+
+    def load_batchEnsemble_state_dict(self, shape_model, color_model):
+        shape_modules_dict = dict(shape_model.named_modules())
+        color_modules_dict = dict(color_model.named_modules())
+
+        self.load_state_dict(shape_model.state_dict(), strict=False)
+
+        for name, module in self.named_modules():
+            if isinstance(module, self._norm_layer):
+                module.bn_shape.load_state_dict(shape_modules_dict[name].state_dict())
+                module.bn_color.load_state_dict(color_modules_dict[name].state_dict())
 
 def _resnet(
     arch: str,

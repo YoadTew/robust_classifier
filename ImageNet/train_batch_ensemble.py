@@ -11,8 +11,7 @@ import shutil
 import sys
 import json
 
-from models.resnet import resnet50
-from models.ensemble_network import EnsembleNet
+from models.resnet_bn_ensemble import resnet50
 from data.data_manager import get_val_loader, get_train_loader
 from data.imagenetDataset import imagenetDataset
 from models.EnsembleBatchNorm import EnsembleBatchNorm
@@ -91,7 +90,10 @@ class Trainer:
         ensemble_model = resnet50(num_classes=200, norm_layer=EnsembleBatchNorm)
         ensemble_model.load_batchEnsemble_state_dict(edge_model, color_model)
 
-        self.optimizer = optim.SGD(ensemble_model.parameters(), lr=args.learning_rate, momentum=0.9, weight_decay=args.weight_decay)
+        param_count = sum(p.numel() for p in ensemble_model.parameters() if p.requires_grad)
+        print(f'Parameter count: {param_count:,}')
+
+        self.optimizer = optim.SGD(ensemble_model.get_trainable_params(), lr=args.learning_rate, momentum=0.9, weight_decay=args.weight_decay)
         self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=args.MILESTONES, gamma=0.1)
 
         if args.resume_ensemble and os.path.isfile(args.resume_ensemble):
