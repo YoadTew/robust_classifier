@@ -8,14 +8,14 @@ import random
 import os
 import sys
 
-from models.resnet import resnet50
-from models.ensemble_network import EnsembleNet
+from models.EnsembleBatchNorm import EnsembleBatchNorm
+from models.resnet_bn_ensemble import resnet50
 from data.data_manager import get_test_loaders
 
 def get_args():
     parser = argparse.ArgumentParser(description="testing script",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("--batch_size", "-b", type=int, default=256, help="Batch size")
+    parser.add_argument("--batch_size", "-b", type=int, default=128, help="Batch size")
     parser.add_argument('--pretrained', action='store_true', help='Load pretrain model')
     parser.add_argument("--n_workers", type=int, default=4, help="Number of workers for dataloader")
     parser.add_argument("--data_parallel", action='store_true', help='Run on all visible gpus')
@@ -23,7 +23,7 @@ def get_args():
     parser.add_argument("--img_dir", default='/home/work/Datasets/ImageNet-C', help="Images dir path")
 
     parser.add_argument('--resume_ensemble',
-                        default='experiments/ImageNetSubset/ensemble50/optim=SGD_shape_trainBN_color_trainBN/checkpoints/model_best.pth.tar',
+                        default='experiments/ImageNetSubset/ensemble50_batch/optim=SGD_shape_trainBN_color_trainBN/checkpoints/model_best.pth.tar',
                         type=str,
                         help='path to color model checkpoint (default: none)')
 
@@ -34,13 +34,7 @@ class Tester:
         self.args = args
         self.device = device
 
-        # Loads shape model
-        edge_model = resnet50(pretrained=args.pretrained, num_classes=200)
-
-        # Loads color model
-        color_model = resnet50(pretrained=args.pretrained, num_classes=200)
-
-        ensemble_model = EnsembleNet(edge_model, color_model, n_classes=200, device=device)
+        ensemble_model = resnet50(num_classes=200, norm_layer=EnsembleBatchNorm)
 
         if args.resume_ensemble and os.path.isfile(args.resume_ensemble):
             print(f'Loading checkpoint {args.resume_ensemble}')
@@ -87,7 +81,7 @@ class Tester:
                 inputs, targets = inputs.to(self.device), targets.to(self.device)
 
                 # forward
-                outputs = self.ensemble_model(inputs)
+                outputs, _ = self.ensemble_model(inputs)
 
                 _, cls_pred = outputs.max(dim=1)
 
@@ -114,7 +108,6 @@ def main():
     best_val_acc = tester.do_testing()
 
 if __name__ == "__main__":
-    # torchfunc.cuda.reset()
     torch.cuda.empty_cache()
     torch.backends.cudnn.benchmark = True
     main()

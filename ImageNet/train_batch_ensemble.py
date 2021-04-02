@@ -25,7 +25,7 @@ def get_args():
 
     parser.add_argument("--learning_rate", "-l", type=float, default=0.001, help="Learning rate")
     parser.add_argument("--epochs", "-e", type=int, default=30, help="Number of epochs")
-    parser.add_argument("--MILESTONES", nargs='*', type=int, default=[25, 50, 75], help="Learning rate")
+    parser.add_argument("--MILESTONES", nargs='*', type=int, default=[10, 20, 30], help="Learning rate")
     parser.add_argument('--weight_decay', default=1e-4, type=float, help='weight decay')
     parser.add_argument("--n_workers", type=int, default=4, help="Number of workers for dataloader")
     parser.add_argument("--data_parallel", action='store_true', help='Run on all visible gpus')
@@ -39,7 +39,7 @@ def get_args():
     parser.add_argument('--resume_ensemble', default='', type=str,
                         help='path to color model checkpoint (default: none)')
 
-    parser.add_argument("--experiment", default='experiments/ImageNetSubset/ensemble50_batch/optim=SGD_shape_trainBN_color_trainBN',
+    parser.add_argument("--experiment", default='experiments/ImageNetSubset/ensemble50_batch/',
                         help="Logs dir path")
 
     args = parser.parse_args()

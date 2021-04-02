@@ -118,9 +118,8 @@ def main():
     random.seed(0)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    if sys.gettrace() is None:  # Not debug
-        args.n_workers = 4
-    else:  # Debug
+    if sys.gettrace() is not None:  # debug
+        print('Debug mode!')
         args.n_workers = 0
 
     tester = Tester(args, device)
