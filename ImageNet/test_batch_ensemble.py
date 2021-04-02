@@ -23,7 +23,7 @@ def get_args():
     parser.add_argument("--img_dir", default='/home/work/Datasets/ImageNet-C', help="Images dir path")
 
     parser.add_argument('--resume_ensemble',
-                        default='experiments/ImageNetSubset/ensemble50_batch/optim=SGD_shape_trainBN_color_trainBN/checkpoints/model_best.pth.tar',
+                        default='experiments/ImageNetSubset/ensemble50_batch/train_fc+convexWeights/checkpoints/model_best.pth.tar',
                         type=str,
                         help='path to color model checkpoint (default: none)')
 
