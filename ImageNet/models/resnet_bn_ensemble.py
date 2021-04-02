@@ -261,9 +261,9 @@ class ResNet(nn.Module):
         for param in self.parameters():
             param.requires_grad_(False)
 
-        for name, module in self.named_modules():
-            if isinstance(module, self._norm_layer):
-                module.convex_weights.requires_grad_(True)
+        # for name, module in self.named_modules():
+        #     if isinstance(module, self._norm_layer):
+        #         module.convex_weights.requires_grad_(True)
 
         self.fc.requires_grad_(True)
 

@@ -39,7 +39,7 @@ def get_args():
     parser.add_argument('--resume_ensemble', default='', type=str,
                         help='path to color model checkpoint (default: none)')
 
-    parser.add_argument("--experiment", default='experiments/ImageNetSubset/ensemble50_batch/train_fc+convexWeights',
+    parser.add_argument("--experiment", default='experiments/ImageNetSubset/ensemble50_batch/train=fc_convex=0.5',
                         help="Logs dir path")
 
     args = parser.parse_args()
