@@ -11,7 +11,7 @@ import shutil
 import sys
 import json
 
-from models.resnet import resnet50
+from models.resnet_bn_ensemble import resnet50
 from data.data_manager import get_val_loader, get_train_loader
 from data.imagenetDataset import imagenetDataset
 from models.EnsembleBatchNorm import EnsembleBatchNorm
@@ -22,6 +22,10 @@ def get_args():
     parser.add_argument('--resume_edge', default='experiments/ImageNetSubset/resnet50/shape=1_color=0_pretrained_lr=0.005_trainBN/checkpoints/model_best.pth.tar', type=str,
                         help='path to edge model checkpoint (default: none)')
     parser.add_argument('--resume_color', default='experiments/ImageNetSubset/resnet50/shape=0_color=1_pretrained_lr=0.005_trainBN/checkpoints/model_best.pth.tar', type=str,
+                        help='path to color model checkpoint (default: none)')
+    parser.add_argument('--resume_ensemble',
+                        default='experiments/ImageNetSubset/ensemble50_batch/train_fc+convexWeights/checkpoints/model_best.pth.tar',
+                        type=str,
                         help='path to color model checkpoint (default: none)')
 
     args = parser.parse_args()
@@ -50,7 +54,18 @@ def main():
     ensemble_model = resnet50(num_classes=200, norm_layer=EnsembleBatchNorm)
     ensemble_model.load_batchEnsemble_state_dict(edge_model, color_model)
 
-    print('yay')
+    if args.resume_ensemble and os.path.isfile(args.resume_ensemble):
+        print(f'Loading checkpoint {args.resume_ensemble}')
+
+        checkpoint = torch.load(args.resume_ensemble)
+        ensemble_model.load_state_dict(checkpoint['state_dict'])
+
+        print(f'Loaded checkpoint {args.resume_ensemble}')
+
+    for name, module in ensemble_model.named_modules():
+        if isinstance(module, EnsembleBatchNorm):
+            print(name)
+            print(module.convex_weights.detach().numpy())
 
 if __name__ == "__main__":
     # torchfunc.cuda.reset()
