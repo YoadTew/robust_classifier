@@ -33,6 +33,8 @@ def get_args():
     parser.add_argument("--n_workers", type=int, default=4, help="Number of workers for dataloader")
     parser.add_argument("--data_parallel", action='store_true', help='Run on all visible gpus')
 
+
+    parser.add_argument("--n_classes", type=int, default=200, help="Number of classes")
     parser.add_argument("--shape_loss_weight", type=float, default=0., help="Shape loss weight")
     parser.add_argument("--color_loss_weight", type=float, default=0., help="Color loss weight")
     parser.add_argument("--distance_criterion", type=str, default='MSE', help="MSE or cosine")
@@ -45,7 +47,7 @@ def get_args():
     parser.add_argument("--save_checkpoint_interval", type=int, default=10, help="Save checkpoints every i epochs")
     parser.add_argument('--resume', default='', type=str,
                         help='path to latest checkpoint (default: none)')
-    parser.add_argument("--experiment", default='experiments/TinyImagenet/resnet50/shape=0_color=0_pretrained_lr=0.001_imgsize=224',
+    parser.add_argument("--experiment", default='experiments/TinyImagenet/resnet50/shape=0_color=1_pretrained_lr=0.001_imgsize=224_trainBN',
                         help="Logs dir path")
 
     args = parser.parse_args()
@@ -97,7 +99,7 @@ class Trainer:
         self.train_loader = get_train_loader(args, imagenetDataset, use_sobel=self.use_shape, use_color=self.use_color)
         self.val_loader = get_val_loader(args, imagenetDataset)
 
-        model = resnet50(pretrained=args.pretrained, num_classes=200, norm_layer=args.norm_layer)
+        model = resnet50(pretrained=args.pretrained, num_classes=args.n_classes, norm_layer=args.norm_layer)
         param_count = sum(p.numel() for p in model.parameters() if p.requires_grad)
         print(f'Parameter count: {param_count:,}')
 
