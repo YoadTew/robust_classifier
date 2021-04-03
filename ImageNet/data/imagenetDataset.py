@@ -37,6 +37,14 @@ def pil_to_sobel(image):
 def pil_to_colored(image):
     return image.resize([16, 16]).resize([224, 224])
 
+
+def pil_to_blur(image):
+    np_img = np.array(image, dtype=np.uint8)
+    blur = cv2.GaussianBlur(np_img, (51, 51), 0)
+    pil_blur = Image.fromarray(blur).convert("RGB")
+
+    return pil_blur
+
 class imagenetDataset(data.Dataset):
     def __init__(self, img_dir, preprocess=None, transform=None, target_transform=None, loader=default_loader, use_sobel=False, use_color=False):
         self.images = []
@@ -73,7 +81,7 @@ class imagenetDataset(data.Dataset):
             sample = self.preprocess(sample)
 
         if self.use_color:
-            colorized = pil_to_colored(sample)
+            colorized = pil_to_blur(sample)
         if self.use_sobel:
             sobel = pil_to_sobel(sample)
 

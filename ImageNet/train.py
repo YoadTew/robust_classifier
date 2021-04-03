@@ -45,7 +45,7 @@ def get_args():
     parser.add_argument("--save_checkpoint_interval", type=int, default=10, help="Save checkpoints every i epochs")
     parser.add_argument('--resume', default='', type=str,
                         help='path to latest checkpoint (default: none)')
-    parser.add_argument("--experiment", default='experiments/resnet50/dummy',
+    parser.add_argument("--experiment", default='experiments/TinyImagenet/resnet50/shape=0_color=0_pretrained_lr=0.001_imgsize=224',
                         help="Logs dir path")
 
     args = parser.parse_args()
