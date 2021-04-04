@@ -13,7 +13,6 @@ import json
 
 from models.resnet import resnet50
 from data.data_manager import get_val_loader, get_train_loader
-from data.imagenetDataset import imagenetDataset
 from models.HyperBatchNorm import HyperBatchNorm
 
 from datetime import datetime
@@ -35,6 +34,7 @@ def get_args():
     parser.add_argument("--n_workers", type=int, default=4, help="Number of workers for dataloader")
     parser.add_argument("--pin_memory", action='store_true', help='Pin memory in data loader')
     parser.add_argument("--data_parallel", action='store_true', help='Run on all visible gpus')
+    parser.add_argument("--dataset_type", type=str, default='image', choices=['image', 'lmdb'], help="lmdb or image folder")
 
 
     parser.add_argument("--n_classes", type=int, default=200, help="Number of classes")
@@ -103,8 +103,8 @@ class Trainer:
         self.use_shape = (self.args.shape_loss_weight > 0)
         self.use_color = (self.args.color_loss_weight > 0)
 
-        self.train_loader = get_train_loader(args, imagenetDataset, use_sobel=self.use_shape, use_color=self.use_color)
-        self.val_loader = get_val_loader(args, imagenetDataset)
+        self.train_loader = get_train_loader(args, use_sobel=self.use_shape, use_color=self.use_color)
+        self.val_loader = get_val_loader(args)
 
         model = resnet50(pretrained=args.pretrained, num_classes=args.n_classes, norm_layer=args.norm_layer)
         param_count = sum(p.numel() for p in model.parameters() if p.requires_grad)
