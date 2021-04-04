@@ -23,7 +23,7 @@ def get_train_loader(args, dataset_class, use_sobel=False, use_color=False):
 
     dataset = dataset_class(f'{args.img_dir}/train', preprocess=preprocess, transform=img_transform, use_sobel=use_sobel, use_color=use_color)
 
-    train_dataloader = data.DataLoader(dataset, num_workers=args.n_workers, batch_size=args.batch_size, pin_memory=True, shuffle=True, drop_last=True)
+    train_dataloader = data.DataLoader(dataset, num_workers=args.n_workers, batch_size=args.batch_size, pin_memory=args.pin_memory, shuffle=True, drop_last=True)
 
     return train_dataloader
 
@@ -40,7 +40,7 @@ def get_val_loader(args, dataset_class):
 
     dataset = dataset_class(f'{args.img_dir}/val', transform=img_transform)
 
-    train_dataloader = data.DataLoader(dataset, num_workers=args.n_workers, batch_size=args.batch_size, pin_memory=True, shuffle=True)
+    train_dataloader = data.DataLoader(dataset, num_workers=args.n_workers, batch_size=args.batch_size, pin_memory=args.pin_memory, shuffle=True)
 
     return train_dataloader
 

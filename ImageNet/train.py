@@ -33,6 +33,7 @@ def get_args():
     parser.add_argument('--weight_decay', default=1e-4, type=float,  help='weight decay')
 
     parser.add_argument("--n_workers", type=int, default=4, help="Number of workers for dataloader")
+    parser.add_argument("--pin_memory", action='store_true', help='Pin memory in data loader')
     parser.add_argument("--data_parallel", action='store_true', help='Run on all visible gpus')
 
 
