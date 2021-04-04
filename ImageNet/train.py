@@ -16,6 +16,8 @@ from data.data_manager import get_val_loader, get_train_loader
 from data.imagenetDataset import imagenetDataset
 from models.HyperBatchNorm import HyperBatchNorm
 
+from datetime import datetime
+
 def get_args():
     parser = argparse.ArgumentParser(description="training script",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -39,8 +41,7 @@ def get_args():
     parser.add_argument("--color_loss_weight", type=float, default=0., help="Color loss weight")
     parser.add_argument("--distance_criterion", type=str, default='MSE', help="MSE or cosine")
     parser.add_argument("--norm_layer", type=str, choices=[None, 'HyperBatchNorm'], help="Use a different norm layer")
-    parser.add_argument("--train_only_bn", action='store_true', help="Train only batchNorm layers")
-
+    parser.add_argument("--train_layers", type=str, choices=[None, 'bn', 'fc'], help="Use a different norm layer")
 
     parser.add_argument("--img_dir", default='/home/work/Datasets/Tiny-ImageNet-original', help="Images dir path")
 
@@ -86,6 +87,11 @@ def cosine_loss(criterion, pred, target, device='cuda'):
 
     return criterion(pred, target, indication)
 
+def log_info(text):
+    dt_string = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    print(f'{dt_string} | {text}')
+    sys.stdout.flush()
+
 class Trainer:
     def __init__(self, args, device):
         self.args = args
@@ -103,8 +109,10 @@ class Trainer:
         param_count = sum(p.numel() for p in model.parameters() if p.requires_grad)
         print(f'Parameter count: {param_count:,}')
 
-        if args.train_only_bn:
+        if args.train_layers == 'bn':
             trainable_params = model.get_bn_params_freeze_rest()
+        elif args.train_layers == 'fc':
+            trainable_params = model.get_fc_params_freeze_rest()
         else:
             trainable_params = model.parameters()
 
@@ -181,8 +189,8 @@ class Trainer:
                 loss += self.args.color_loss_weight * color_loss
 
             if batch_idx % 100 == 1:
-                print(f'epoch:  {epoch_idx}/{self.args.epochs}, batch: {batch_idx}/{len(self.train_loader)}, '
-                      f'loss: {loss.item()}, cls_loss: {cls_loss.item()}, extra_losses: {loss.item() - cls_loss.item()}')
+                log_info(f'epoch:  {epoch_idx}/{self.args.epochs}, batch: {batch_idx}/{len(self.train_loader)}, '
+                         f'loss: {loss.item()}, cls_loss: {cls_loss.item()}, extra_losses: {loss.item() - cls_loss.item()}')
 
             n_iter = epoch_idx * len(self.train_loader) + batch_idx
             self.writer.add_scalar('loss_train', loss.item(), n_iter)
@@ -190,7 +198,6 @@ class Trainer:
 
             loss.backward()
             self.optimizer.step()
-
 
             if not self.args.data_parallel:
                 last_layer = list(self.model.children())[-1]
@@ -209,7 +216,8 @@ class Trainer:
             total = len(self.val_loader.dataset)
             class_correct = self.do_test(self.val_loader)
             class_acc = float(class_correct) / total
-            print(f'Validation Accuracy: {class_acc}')
+
+            log_info(f'Validation Accuracy: {class_acc}')
 
             is_best = False
             if class_acc > self.best_acc:

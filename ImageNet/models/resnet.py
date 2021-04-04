@@ -270,6 +270,14 @@ class ResNet(nn.Module):
 
         return filter(lambda p: p.requires_grad, self.parameters())
 
+    def get_fc_params_freeze_rest(self):
+        for param in self.parameters():
+            param.requires_grad_(False)
+
+        self.fc.requires_grad_(True)
+
+        return filter(lambda p: p.requires_grad, self.parameters())
+
 def _resnet(
     arch: str,
     block: Type[Union[BasicBlock, Bottleneck]],
