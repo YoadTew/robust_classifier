@@ -326,9 +326,8 @@ def resnet50(pretrained: bool = False, num_classes=200, progress: bool = True, *
     net = _resnet('resnet50', Bottleneck, [3, 4, 6, 3], pretrained, progress,
                   **kwargs)
 
-    # if num_classes != 1000:
-    #     num_ftrs = net.fc.in_features
-    #     net.fc = nn.Linear(num_ftrs, num_classes)
+    num_ftrs = net.fc.in_features
+    net.fc = nn.Linear(num_ftrs, num_classes)
 
     return net
 

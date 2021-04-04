@@ -128,6 +128,10 @@ class Trainer:
             self.best_acc = checkpoint['best_prec1']
             model.load_state_dict(checkpoint['state_dict'])
             self.optimizer.load_state_dict(checkpoint['optimizer'])
+            for state in self.optimizer.state.values():
+                for k, v in state.items():
+                    if isinstance(v, torch.Tensor):
+                        state[k] = v.to(device)
 
             print(f'Loaded checkpoint {args.resume}, starting from epoch {self.start_epoch}')
 
