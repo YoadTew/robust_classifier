@@ -58,7 +58,7 @@ class imagenetDataset(data.Dataset):
         self.use_sobel = use_sobel
         self.use_color = use_color
 
-        with open(f'{img_dir}/class_to_idx.json') as json_file:
+        with open(f'{img_dir}/../class_to_idx.json') as json_file:
             self.class_to_idx = json.load(json_file)
 
         img_classes = glob.glob(f'{img_dir}/*')
