@@ -43,13 +43,12 @@ def get_val_loader(args):
         normalize,
     ])
 
-
     if args.dataset_type == 'image':
-        dataset = imagenetDataset(f'{args.img_dir}/val', transform=img_transform)
+        dataset = imagenetDataset(f'{args.img_dir}/val', preprocess=img_transform)
     elif args.dataset_type == 'lmdb':
         dataset = ImageFolderLMDB(f'{args.img_dir}/val.lmdb', transform=img_transform)
 
-    train_dataloader = data.DataLoader(dataset, num_workers=args.n_workers, batch_size=args.batch_size, pin_memory=args.pin_memory, shuffle=True)
+    train_dataloader = data.DataLoader(dataset, num_workers=args.n_workers, batch_size=args.batch_size, pin_memory=args.pin_memory, shuffle=False)
 
     return train_dataloader
 

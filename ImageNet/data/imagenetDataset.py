@@ -8,18 +8,7 @@ import os
 import cv2
 import json
 
-def pil_loader(path):
-    # open path as file to avoid ResourceWarning (https://github.com/python-pillow/Pillow/issues/835)
-    with open(path, 'rb') as f:
-        img = Image.open(f)
-        return img.convert('RGB')
-
-def default_loader(path):
-    # from torchvision import get_image_backend
-    # if get_image_backend() == 'accimage':
-    #     return accimage_loader(path)
-    # else:
-    return pil_loader(path)
+import torchvision.datasets as datasets
 
 def pil_to_sobel(image):
     gray = image.convert("L")
@@ -47,45 +36,23 @@ def pil_to_blur(image):
     return pil_blur
 
 class imagenetDataset(data.Dataset):
-    def __init__(self, img_dir, preprocess=None, transform=None, target_transform=None, loader=default_loader, use_sobel=False, use_color=False):
-        self.images = []
-        self.targets = []
+    def __init__(self, img_dir, preprocess=None, transform=None, target_transform=None, use_sobel=False, use_color=False):
 
-        self.loader = loader
+        self.dataset = datasets.ImageFolder(img_dir, preprocess)
+
         self.transform = transform
-        self.preprocess = preprocess
         self.target_transform = target_transform
         self.use_sobel = use_sobel
         self.use_color = use_color
 
-        with open(f'{img_dir}/../class_to_idx.json') as json_file:
-            self.class_to_idx = json.load(json_file)
-
-        img_classes = glob.glob(f'{img_dir}/*')
-
-        for idx, img_class_path in enumerate(img_classes):
-            img_class = img_class_path.split('/')[-1]
-
-            imgs_pathes = glob.glob(f'{img_dir}/{img_class}/*.JPEG')
-
-            for img_path in imgs_pathes:
-                self.images.append(img_path)
-                self.targets.append(self.class_to_idx[img_class])
-
     def __getitem__(self, index):
-        img_path = self.images[index]
-        sample = self.loader(img_path)
+        sample, target = self.dataset[index]
         extra_data = {}
-
-        if self.preprocess is not None:
-            sample = self.preprocess(sample)
 
         if self.use_color:
             colorized = pil_to_colored(sample)
         if self.use_sobel:
             sobel = pil_to_sobel(sample)
-
-        target = self.targets[index]
 
         if self.transform is not None:
             sample = self.transform(sample)
@@ -98,10 +65,7 @@ class imagenetDataset(data.Dataset):
                 colorized = self.transform(colorized)
                 extra_data['color'] = colorized
 
-        if self.target_transform is not None:
-            target = self.target_transform(target)
-
         return sample, target, extra_data
 
     def __len__(self):
-        return len(self.images)
+        return len(self.dataset)
