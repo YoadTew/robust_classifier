@@ -6,6 +6,7 @@ import random
 import torch
 import os
 import cv2
+import json
 
 def pil_loader(path):
     # open path as file to avoid ResourceWarning (https://github.com/python-pillow/Pillow/issues/835)
@@ -49,8 +50,6 @@ class imagenetDataset(data.Dataset):
     def __init__(self, img_dir, preprocess=None, transform=None, target_transform=None, loader=default_loader, use_sobel=False, use_color=False):
         self.images = []
         self.targets = []
-        self.class_str_to_id = {}
-        self.class_id_to_str = {}
 
         self.loader = loader
         self.transform = transform
@@ -59,18 +58,19 @@ class imagenetDataset(data.Dataset):
         self.use_sobel = use_sobel
         self.use_color = use_color
 
+        with open(f'{img_dir}/class_to_idx.json') as json_file:
+            self.class_to_idx = json.load(json_file)
+
         img_classes = glob.glob(f'{img_dir}/*')
 
         for idx, img_class_path in enumerate(img_classes):
             img_class = img_class_path.split('/')[-1]
-            self.class_str_to_id[img_class] = idx
-            self.class_id_to_str[idx] = img_class
 
             imgs_pathes = glob.glob(f'{img_dir}/{img_class}/*.JPEG')
 
             for img_path in imgs_pathes:
                 self.images.append(img_path)
-                self.targets.append(idx)
+                self.targets.append(self.class_to_idx[img_class])
 
     def __getitem__(self, index):
         img_path = self.images[index]
@@ -81,7 +81,7 @@ class imagenetDataset(data.Dataset):
             sample = self.preprocess(sample)
 
         if self.use_color:
-            colorized = pil_to_blur(sample)
+            colorized = pil_to_colored(sample)
         if self.use_sobel:
             sobel = pil_to_sobel(sample)
 
