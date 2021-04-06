@@ -6,6 +6,7 @@ import numpy as np
 import random
 import os
 import sys
+from datetime import datetime
 
 from models.resnet import resnet50
 from data.data_manager import get_test_loaders
@@ -13,24 +14,29 @@ from data.data_manager import get_test_loaders
 def get_args():
     parser = argparse.ArgumentParser(description="testing script",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("--batch_size", "-b", type=int, default=32, help="Batch size")
+    parser.add_argument("--batch_size", "-b", type=int, default=128, help="Batch size")
     parser.add_argument('--pretrained', action='store_true', help='Load pretrain model')
     parser.add_argument("--n_workers", type=int, default=4, help="Number of workers for dataloader")
     parser.add_argument("--data_parallel", action='store_true', help='Run on all visible gpus')
 
     parser.add_argument("--img_dir", default='/home/work/Datasets/ImageNet-C', help="Images dir path")
 
-    parser.add_argument('--resume', default='experiments/TinyImagenet/resnet50/shape=0_color=0_pretrained_lr=0.001_imgsize=224/checkpoints/model_best.pth.tar', type=str,
+    parser.add_argument('--resume', default='experiments/Imagenet/resnet50/shape=0_color=0_pretrained_lr=0.005_imgsize=256_trainFC/checkpoints/model_best.pth.tar', type=str,
                         help='path to latest checkpoint (default: none)')
 
     return parser.parse_args()
+
+def log_info(text):
+    dt_string = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    print(f'{dt_string} | {text}')
+    sys.stdout.flush()
 
 class Tester:
     def __init__(self, args, device):
         self.args = args
         self.device = device
 
-        model = resnet50(pretrained=args.pretrained, num_classes=200)
+        model = resnet50(pretrained=args.pretrained, num_classes=1000)
 
         if args.resume and os.path.isfile(args.resume):
             print(f'Loading checkpoint {args.resume}')
@@ -55,7 +61,7 @@ class Tester:
         for loader, data_name in get_test_loaders(self.args):
             accuracy = self.do_test(loader)
             aug_accuracies.append(accuracy)
-            print(f'Dataset: {data_name}, accuracy: {accuracy}')
+            log_info(f'Dataset: {data_name}, accuracy: {accuracy}')
 
             if len(aug_accuracies) == 5:
                 aug_name = data_name.split('_')[0]
@@ -63,7 +69,7 @@ class Tester:
                 aug_accuracies = []
                 curruption_errors.append(1 - mean_acc)
 
-                print(f'Mean corruption: {aug_name}, accuracy: {mean_acc}, error: {1 - mean_acc}')
+                log_info(f'Mean corruption: {aug_name}, accuracy: {mean_acc}, error: {1 - mean_acc}')
 
         print('mCE:', sum(curruption_errors) / len(curruption_errors))
 
