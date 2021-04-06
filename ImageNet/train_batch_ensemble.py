@@ -94,8 +94,8 @@ class Trainer:
         self.start_epoch = 0
         self.best_acc = 0
 
-        self.train_loader = get_train_loader(args, imagenetDataset)
-        self.val_loader = get_val_loader(args, imagenetDataset)
+        self.train_loader = get_train_loader(args)
+        self.val_loader = get_val_loader(args)
 
         edge_model = resnet50(num_classes=1000)
         edge_checkpoint = torch.load(args.resume_edge)
