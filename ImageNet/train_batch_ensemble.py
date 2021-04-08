@@ -22,6 +22,7 @@ def get_args():
     parser = argparse.ArgumentParser(description="training script",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--batch_size", "-b", type=int, default=32, help="Batch size")
+    parser.add_argument("--val_batch_size", type=int, default=512, help="Batch size")
     parser.add_argument('--pretrained', action='store_true', help='Load pretrain model')
     parser.add_argument("--img_size", type=int, default=256, help="Image size to resize before cropping 224")
 
@@ -175,20 +176,21 @@ class Trainer:
                 self.best_acc = class_acc
                 is_best = True
 
-            checkpoint_name = f'checkpoint_{epoch_idx + 1}_acc_{round(class_acc, 3)}.pth.tar'
-            print(f'Saving {checkpoint_name} to dir {self.args.checkpoint}')
+            if is_best or (epoch_idx + 1) % self.args.save_checkpoint_interval == 0:
+                checkpoint_name = f'checkpoint_{epoch_idx + 1}_acc_{round(class_acc, 3)}.pth.tar'
+                print(f'Saving {checkpoint_name} to dir {self.args.checkpoint}')
 
-            if self.args.data_parallel:
-                state_dict = self.ensemble_model.module.state_dict()
-            else:
-                state_dict = self.ensemble_model.state_dict()
+                if self.args.data_parallel:
+                    state_dict = self.ensemble_model.module.state_dict()
+                else:
+                    state_dict = self.ensemble_model.state_dict()
 
-            save_checkpoint({
-                'epoch': epoch_idx + 1,
-                'state_dict': state_dict,
-                'best_prec1': self.best_acc,
-                'optimizer': self.optimizer.state_dict(),
-            }, is_best, checkpoint=self.args.checkpoint, filename=checkpoint_name)
+                save_checkpoint({
+                    'epoch': epoch_idx + 1,
+                    'state_dict': state_dict,
+                    'best_prec1': self.best_acc,
+                    'optimizer': self.optimizer.state_dict(),
+                }, is_best, checkpoint=self.args.checkpoint, filename=checkpoint_name)
 
             self.writer.add_scalar('val_accuracy', class_acc, epoch_idx)
 
