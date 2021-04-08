@@ -46,7 +46,7 @@ def get_val_loader(args):
 
     dataset = imagenetDataset(f'{args.img_dir}/val', preprocess=img_transform)
 
-    train_dataloader = data.DataLoader(dataset, num_workers=args.n_workers, batch_size=args.batch_size, pin_memory=args.pin_memory, shuffle=False)
+    train_dataloader = data.DataLoader(dataset, num_workers=args.n_workers, batch_size=args.val_batch_size, pin_memory=args.pin_memory, shuffle=False)
 
     return train_dataloader
 
@@ -70,7 +70,7 @@ def get_test_loader(args):
 def get_test_loaders(args):
 
     img_dir = args.img_dir
-    parent_augs = ['weather_orig']#['blur', 'weather', 'noise', 'digital']
+    parent_augs = ['blur_orig', 'weather_orig', 'noise_orig', 'digital_orig']#['blur', 'weather', 'noise', 'digital']
 
     for parent_aug in parent_augs:
         aug_childs = [x.split('/')[-1] for x in glob.glob(f'{img_dir}/{parent_aug}/*')]

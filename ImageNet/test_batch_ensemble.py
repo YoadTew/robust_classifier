@@ -7,6 +7,7 @@ import numpy as np
 import random
 import os
 import sys
+from datetime import datetime
 
 from models.EnsembleBatchNorm import EnsembleBatchNorm
 from models.resnet_bn_ensemble import resnet50
@@ -16,25 +17,29 @@ def get_args():
     parser = argparse.ArgumentParser(description="testing script",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--batch_size", "-b", type=int, default=128, help="Batch size")
-    parser.add_argument('--pretrained', action='store_true', help='Load pretrain model')
     parser.add_argument("--n_workers", type=int, default=4, help="Number of workers for dataloader")
     parser.add_argument("--data_parallel", action='store_true', help='Run on all visible gpus')
 
     parser.add_argument("--img_dir", default='/home/work/Datasets/ImageNet-C', help="Images dir path")
 
     parser.add_argument('--resume_ensemble',
-                        default='experiments/ImageNetSubset/ensemble50_batch/train_fc+convexWeights/checkpoints/model_best.pth.tar',
+                        default='experiments/Imagenet/affinemix50/shape_color_lr=0.001_train=fc/checkpoints/model_best.pth.tar',
                         type=str,
                         help='path to color model checkpoint (default: none)')
 
     return parser.parse_args()
+
+def log_info(text):
+    dt_string = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    print(f'{dt_string} | {text}')
+    sys.stdout.flush()
 
 class Tester:
     def __init__(self, args, device):
         self.args = args
         self.device = device
 
-        ensemble_model = resnet50(num_classes=200, norm_layer=EnsembleBatchNorm)
+        ensemble_model = resnet50(num_classes=1000, norm_layer=EnsembleBatchNorm)
 
         if args.resume_ensemble and os.path.isfile(args.resume_ensemble):
             print(f'Loading checkpoint {args.resume_ensemble}')
@@ -58,7 +63,7 @@ class Tester:
         for loader, data_name in get_test_loaders(self.args):
             accuracy = self.do_test(loader)
             aug_accuracies.append(accuracy)
-            print(f'Dataset: {data_name}, accuracy: {accuracy}')
+            log_info(f'Dataset: {data_name}, accuracy: {accuracy}')
 
             if len(aug_accuracies) == 5:
                 aug_name = data_name.split('_')[0]
@@ -66,7 +71,7 @@ class Tester:
                 aug_accuracies = []
                 curruption_errors.append(1 - mean_acc)
 
-                print(f'Mean corruption: {aug_name}, accuracy: {mean_acc}, error: {1 - mean_acc}')
+                log_info(f'Mean corruption: {aug_name}, accuracy: {mean_acc}, error: {1 - mean_acc}')
 
         print('mCE:', sum(curruption_errors) / len(curruption_errors))
 

@@ -24,6 +24,7 @@ def get_args():
     parser.add_argument('--pretrained', action='store_true', help='Load pretrain model')
 
     parser.add_argument("--batch_size", "-b", type=int, default=256, help="Batch size")
+    parser.add_argument("--val_batch_size", type=int, default=768, help="Batch size")
     parser.add_argument("--img_size", type=int, default=256, help="Image size to resize before cropping 224")
     parser.add_argument("--MILESTONES", nargs='*', type=int, default=[1, 10, 20], help="Learning rate")
     parser.add_argument("--learning_rate", "-l", type=float, default=0.1, help="Learning rate")
