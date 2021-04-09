@@ -11,10 +11,10 @@ import shutil
 import sys
 import json
 
-from models.resnet_bn_ensemble import resnet50
+from models.resnet_AffineMix import resnet50
 from data.data_manager import get_val_loader, get_train_loader
 from data.imagenetDataset import imagenetDataset
-from models.EnsembleBatchNorm import EnsembleBatchNorm
+from models.AffineMix import AffineMix
 
 def get_args():
     parser = argparse.ArgumentParser(description="training script",
@@ -51,8 +51,8 @@ def main():
     color_state_dict = color_checkpoint['state_dict']
     color_model.load_state_dict(color_state_dict)
 
-    ensemble_model = resnet50(num_classes=200, norm_layer=EnsembleBatchNorm)
-    ensemble_model.load_batchEnsemble_state_dict(edge_model, color_model)
+    ensemble_model = resnet50(num_classes=200, norm_layer=AffineMix)
+    ensemble_model.load_AffineMix_state_dict(edge_model, color_model)
 
     if args.resume_ensemble and os.path.isfile(args.resume_ensemble):
         print(f'Loading checkpoint {args.resume_ensemble}')
@@ -63,7 +63,7 @@ def main():
         print(f'Loaded checkpoint {args.resume_ensemble}')
 
     for name, module in ensemble_model.named_modules():
-        if isinstance(module, EnsembleBatchNorm):
+        if isinstance(module, AffineMix):
             print(name)
             print(module.convex_weights.detach().numpy())
 

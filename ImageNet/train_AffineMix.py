@@ -12,10 +12,10 @@ import sys
 import json
 from datetime import datetime
 
-from models.resnet_bn_ensemble import resnet50
+from models.resnet_AffineMix import resnet50
 from data.data_manager import get_val_loader, get_train_loader
 from data.imagenetDataset import imagenetDataset
-from models.EnsembleBatchNorm import EnsembleBatchNorm
+from models.AffineMix import AffineMix
 
 
 def get_args():
@@ -30,6 +30,7 @@ def get_args():
     parser.add_argument("--epochs", "-e", type=int, default=30, help="Number of epochs")
     parser.add_argument("--MILESTONES", nargs='*', type=int, default=[10, 20, 30], help="Learning rate")
     parser.add_argument('--weight_decay', default=1e-4, type=float, help='weight decay')
+    parser.add_argument('--reset_fc', action='store_true', help='Reset last fc layer in init')
 
     parser.add_argument("--n_workers", type=int, default=4, help="Number of workers for dataloader")
     parser.add_argument("--data_parallel", action='store_true', help='Run on all visible gpus')
@@ -40,11 +41,11 @@ def get_args():
     parser.add_argument("--img_dir", default='/home/work/Datasets/Tiny-ImageNet-original', help="Images dir path")
 
     parser.add_argument('--resume_edge',
-                        default='experiments/ImageNetSubset/resnet50/shape=1_color=0_pretrained_lr=0.005_trainBN/checkpoints/model_best.pth.tar',
+                        default='experiments/Imagenet/resnet50/randomResizeCrop/shape=1_color=0_pretrained_lr=0.01_imgsize=256_trainBN_cropResized/checkpoints/model_best.pth.tar',
                         type=str,
                         help='path to edge model checkpoint (default: none)')
     parser.add_argument('--resume_color',
-                        default='experiments/ImageNetSubset/resnet50/shape=0_color=1_pretrained_lr=0.005_trainBN/checkpoints/model_best.pth.tar',
+                        default='experiments/Imagenet/resnet50/randomResizeCrop/shape=0_color=1_pretrained_lr=0.01_trainBN_cropResized/checkpoints/checkpoint_4_acc_0.687.pth.tar',
                         type=str,
                         help='path to color model checkpoint (default: none)')
     parser.add_argument('--resume_ensemble', default='', type=str,
@@ -108,8 +109,8 @@ class Trainer:
         color_state_dict = color_checkpoint['state_dict']
         color_model.load_state_dict(color_state_dict)
 
-        ensemble_model = resnet50(num_classes=1000, norm_layer=EnsembleBatchNorm)
-        ensemble_model.load_batchEnsemble_state_dict(edge_model, color_model)
+        ensemble_model = resnet50(num_classes=1000, norm_layer=AffineMix)
+        ensemble_model.load_AffineMix_state_dict(edge_model, color_model, args)
 
         param_count = sum(p.numel() for p in ensemble_model.parameters() if p.requires_grad)
         print(f'Parameter count: {param_count:,}')

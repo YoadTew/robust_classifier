@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class EnsembleBatchNorm(nn.Module):
+class AffineMix(nn.Module):
     def __init__(self, planes):
-        super(EnsembleBatchNorm, self).__init__()
+        super(AffineMix, self).__init__()
 
         self.bn_shape = nn.BatchNorm2d(planes)
         self.bn_color = nn.BatchNorm2d(planes)

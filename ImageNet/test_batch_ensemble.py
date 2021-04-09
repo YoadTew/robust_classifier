@@ -9,8 +9,8 @@ import os
 import sys
 from datetime import datetime
 
-from models.EnsembleBatchNorm import EnsembleBatchNorm
-from models.resnet_bn_ensemble import resnet50
+from models.AffineMix import AffineMix
+from models.resnet_AffineMix import resnet50
 from data.data_manager import get_test_loaders
 
 def get_args():
@@ -39,7 +39,7 @@ class Tester:
         self.args = args
         self.device = device
 
-        ensemble_model = resnet50(num_classes=1000, norm_layer=EnsembleBatchNorm)
+        ensemble_model = resnet50(num_classes=1000, norm_layer=AffineMix)
 
         if args.resume_ensemble and os.path.isfile(args.resume_ensemble):
             print(f'Loading checkpoint {args.resume_ensemble}')
