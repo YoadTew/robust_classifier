@@ -23,7 +23,7 @@ def get_args():
     parser.add_argument("--img_dir", default='/home/work/Datasets/ImageNet-C', help="Images dir path")
 
     parser.add_argument('--resume_ensemble',
-                        default='experiments/Imagenet/affinemix50/shape_color_lr=0.001_train=fc/checkpoints/model_best.pth.tar',
+                        default='experiments/Imagenet/affinemix50/randomResizeCrop/shape1_color1_lr=0.001_train=fc/checkpoints/model_best.pth.tar',
                         type=str,
                         help='path to color model checkpoint (default: none)')
 
