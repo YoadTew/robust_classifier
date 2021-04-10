@@ -50,7 +50,7 @@ class imagenetDataset(data.Dataset):
         extra_data = {}
 
         if self.use_color:
-            colorized = pil_to_colored(sample)
+            colorized = pil_to_blur(sample)
         if self.use_sobel:
             sobel = pil_to_sobel(sample)
 
