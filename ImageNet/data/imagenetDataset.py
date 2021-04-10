@@ -1,6 +1,6 @@
 from torch.utils import data
 import glob
-from PIL import Image
+from PIL import Image, ImageFilter
 import numpy as np
 import random
 import torch
@@ -29,9 +29,7 @@ def pil_to_colored(image):
 
 
 def pil_to_blur(image):
-    np_img = np.array(image, dtype=np.uint8)
-    blur = cv2.GaussianBlur(np_img, (51, 51), 0)
-    pil_blur = Image.fromarray(blur).convert("RGB")
+    pil_blur = image.filter(ImageFilter.GaussianBlur(radius = 7))
 
     return pil_blur
 
