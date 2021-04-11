@@ -20,7 +20,9 @@ def pil_to_sobel(image):
     sobel = (sobel / sobel.max() * 255)
 
     pil_sobel = Image.fromarray(sobel).convert("RGB")
-    pil_sobel = Image.blend(pil_sobel, image, 0.15)
+
+    alpha = random.uniform(0, 1)
+    pil_sobel = Image.blend(pil_sobel, image, alpha)  # (1-alpha)*sobel + alpha*image
 
     return pil_sobel
 
