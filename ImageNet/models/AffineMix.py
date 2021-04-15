@@ -9,7 +9,7 @@ class AffineMix(nn.Module):
         self.bn_shape = nn.BatchNorm2d(planes)
         self.bn_color = nn.BatchNorm2d(planes)
 
-        self.convex_weights = nn.Parameter(torch.ones(2) * 0.5)
+        self.convex_weights = nn.Parameter(torch.ones(2))
 
     def forward(self, x):
 
